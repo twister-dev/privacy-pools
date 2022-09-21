@@ -157,7 +157,7 @@ For example, suppose we wanted to create a block list that blocks deposits 0, 12
 
 We can take this a step further by omitting all bits up to and including the first non-default value by providing an initial index:
 
-```json
+```python
 {
     "treeType": "blocklist",
     "firstIndex": 12, // in binary: 0b000000000000000000001100
@@ -178,7 +178,7 @@ An alternatively is to represent the access list by explicitly providing the ind
 ```
 
 In terms of bit representation this would be:
-```json
+```python
 {
     "treeType": "blocklist",
     "list": [0b000000000000000000000000, 0b000000000000000000001100, 0b000000000000000000100000, 0b000000000000000000101010]
