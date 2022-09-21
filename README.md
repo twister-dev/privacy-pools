@@ -140,7 +140,7 @@ Deposits are allowed by default. To block a deposit, set the value at its index 
 
 | ![trees chart](./img/trees_chart.png) |
 |:--:|
-| Featuring a naughty naughty multi sig |
+| Featuring a naughty multi sig |
 
 When the proof is generated, the depositor chooses an arbitrary list to prove inclusion with, and this is verified in the zero knowledge proof on-chain. In either case of a block list or an allow list, the proof is only valid if the leaf value at the deposit’s index in the subset tree is equal to `keccak256("allowed")`. Technically, the blocked value is irrelevant, but the convention of choosing `keccak256("blocked")` makes it easier to transmit lists and generate the associated trees.
 
@@ -155,18 +155,36 @@ For example, suppose we wanted to create a block list that blocks deposits 0, 12
 }
 ```
 
-
 We can take this a step further by omitting all bits up to and including the first non-default value by providing an initial index:
 
 ```json
 {
     "treeType": "blocklist",
-    "firstIndex": 12,
+    "firstIndex": 12, // in binary: 0b000000000000000000001100
     "list": "000000000000000000010000000001"
 }
 ```
+The size of this list is 30 bits, plus the 3 bytes to represent the first index, summing to 54 bits (excluding json keys). This only saves space when the first index is greater than a certain value.
 
 The maximum length of a subset compressed in this form is $2^{20}$ bits, or 128 KiB. Since that’s relatively small, these lists can be stored on-chain in transaction calldata. The list will consume less than 80k gas to be included in calldata up to the 10,000th deposit, less than 800k gas up to the 100,000th deposit, and roughly 8 million gas to post a list up to the final deposit in the tree. In all cases this can fit within the gas limit of a block, and it’s only a one-time cost. We can also use compression to reduce the on-chain footprint.
+
+An alternatively is to represent the access list by explicitly providing the indices of the affected values as an array of `uint24[]`, which is an integer size that is the nearest multiple of 8 that can accommodate the highest index in the trees ($2^{20}$). Following from above this would look like:
+
+```json
+{
+    "treeType": "blocklist",
+    "list": [0, 12, 32, 42]
+}
+```
+
+In terms of bit representation this would be:
+```json
+{
+    "treeType": "blocklist",
+    "list": [0b000000000000000000000000, 0b000000000000000000001100, 0b000000000000000000100000, 0b000000000000000000101010]
+}
+```
+This kind of deal would only be useful if there was a large gap between two deposits in the tree. For example, blocking deposits 12 and 4077. I think this shows there will be a different optimal compressed form for lists depending on the composition of the list. It may be worthwhile to add another parameter that gives a "compression type" depending on the various potential cases.
 
 Depositors reconstruct the subset tree in the browser with only the bit string and the tree type. A given subset tree has a maximum size that’s equal to the maximum size of the deposit tree. So long as the deposit tree merkle proof can be computed in the browser, the proof of inclusion in a subset can be computed in the browser, therefore the overhead of adding this proof should not impede the feasibility of the system based on hardware constraints.
 
