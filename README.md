@@ -138,7 +138,9 @@ Deposits are allowed by default. To block a deposit, set the value at its index 
 
 **Visualizing the lists**
 
-![trees chart](./img/trees_chart.png)
+| ![trees chart](./img/trees_chart.png) |
+|:--:|
+| Featuring a naughty naughty multi sig |
 
 When the proof is generated, the depositor chooses an arbitrary list to prove inclusion or exclusion with, and this is verified in the zero knowledge proof on-chain. In either case of a block list or an allow list, the proof is only valid if the leaf value at the deposit’s index in the subset tree is equal to `keccak256("allowed")`. Technically, the blocked value is irrelevant, but the convention of choosing `keccak256("blocked")` makes it easier to transmit lists and generate the associated trees.
 
