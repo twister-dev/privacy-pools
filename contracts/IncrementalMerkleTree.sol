@@ -300,9 +300,11 @@ contract IncrementalMerkleTree {
         }
         currentHash = hasher.poseidon([left, right]);
         unchecked {
-            currentRootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
-            roots[currentRootIndex] = currentHash;
-            return currentLeafIndex++;
+            currentLeafIndex = checkIndex + 1;
+            uint rootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
+            currentRootIndex = rootIndex;
+            roots[rootIndex] = currentHash;
         }
+        return checkIndex;
     }
 }
