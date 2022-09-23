@@ -64,6 +64,9 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
             ]);
         });
         this.deposit_tree = new MerkleTree({ hasher: poseidon, leaves: this.commitments, baseString: "empty"});
+        // console.log(this.deposit_tree.zeros);
+        // console.log(this.deposit_tree.root);
+        // process.exit();
     });
 
     it("should be able to generate proofs of inclusion in an allow subset", async () => {

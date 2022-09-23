@@ -1,4 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
+require('hardhat-gas-reporter');
 require('dotenv').config();
 // require('./scripts/hardhat.tasks.js');
 
@@ -35,10 +36,10 @@ module.exports = {
             {
                 version: "0.8.10",
                 settings: {
-                    // optimizer: {
-                    //     enabled: true,
-                    //     runs: 1000000,
-                    // }
+                    optimizer: {
+                        enabled: true,
+                        runs: 1048576,
+                    }
                 }
             },
         ]

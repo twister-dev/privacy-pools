@@ -4,19 +4,22 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./verifiers/withdraw_from_subset_verifier.sol";
-import "./MerkleTree.sol";
+import "./IncrementalMerkleTree.sol";
 
-contract PrivacyPool is ReentrancyGuard, MerkleTree, WithdrawFromSubsetVerifier {
+contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFromSubsetVerifier {
     using ProofLib for bytes;
     using SafeERC20 for IERC20;
 
+    // emit the raw commitment, stamped leaf, plus the data to reconstruct the stamped commitment
     event Deposit(
         uint indexed commitment,
+        uint indexed leaf,
         address indexed token,
         uint amount,
         uint leafIndex,
         uint timestamp
     );
+    // emit the subsetRoot with each withdrawal
     event Withdrawal(
         address recipient,
         address indexed relayer,
@@ -25,15 +28,25 @@ contract PrivacyPool is ReentrancyGuard, MerkleTree, WithdrawFromSubsetVerifier 
         uint fee
     );
 
+    // prevent overflow for fee value
     error FeeExceedsAmount();
+    // require zk proof to be valid
     error InvalidZKProof();
+    // check against the value submitted in calldata
     error MsgValueInvalid();
+    // prevent the double spend
     error NoteAlreadySpent();
+    // invalid or stale root
     error UnknownRoot();
+
+    // double spend records
     mapping (uint => bool) public nullifiers;
 
-    constructor(address poseidon) MerkleTree(poseidon, bytes("empty").snarkHash()) {}
+    constructor(address poseidon) IncrementalMerkleTree(poseidon) {}
 
+    /*
+        Deposit any asset and any amount.
+    */
     function deposit(uint commitment, address token, uint amount)
         public
         payable
@@ -48,10 +61,13 @@ contract PrivacyPool is ReentrancyGuard, MerkleTree, WithdrawFromSubsetVerifier 
         uint assetMetadata = abi.encode(token, amount).snarkHash();
         uint leaf = hasher.poseidon([commitment, assetMetadata]);
         uint leafIndex = insert(leaf);
-        emit Deposit(commitment, token, amount, leafIndex, block.timestamp);
+        emit Deposit(commitment, leaf, token, amount, leafIndex, block.timestamp);
         return leafIndex;
     }
 
+    /*
+        Withdraw using zkProof.
+    */
     function withdraw(
         uint[8] calldata flatProof,
         uint root,
@@ -75,7 +91,6 @@ contract PrivacyPool is ReentrancyGuard, MerkleTree, WithdrawFromSubsetVerifier 
             revert UnknownRoot();
         if (fee > amount)
             revert FeeExceedsAmount();
-
         uint assetMetadata = abi.encode(token, amount).snarkHash();
         uint withdrawMetadata = abi.encode(recipient, refund, relayer, fee).snarkHash();
         if (!_verifyWithdrawFromSubsetProof(
