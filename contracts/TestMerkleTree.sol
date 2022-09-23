@@ -8,7 +8,6 @@ interface Poseidon {
 contract TestMerkleTree {
 
     error MerkleTreeCapacity();
-
     Poseidon public hasher;
     // do not change the LEVELS value. there's a hardcoded loop below.
     uint public constant LEVELS = 20;
@@ -53,6 +52,7 @@ contract TestMerkleTree {
         return false;
     }
 
+    // zero values, in bytecode (using stack)
     function zeros(uint i) internal pure returns (uint zero) {
         if       (i == 0) return 543544072303548185257517071258879077999438229338741863745347926248040160894;
         else if  (i == 1) return 5263148031615500517773789998166832002359358478815380373385457941076984476107;
@@ -78,13 +78,13 @@ contract TestMerkleTree {
     }
 
     function testInsertLoop(uint leaf) public returns (uint) {
-        if (currentLeafIndex == 1 << LEVELS) revert MerkleTreeCapacity();
         uint checkIndex = currentLeafIndex;
+        if (checkIndex == 1 << LEVELS) revert MerkleTreeCapacity();
         uint currentHash = leaf;
         uint left;
         uint right;
         for (uint i; i < LEVELS;) {
-            if (checkIndex % 2 == 0) {
+            if (((checkIndex >> i) & 1) == 0) {
                 left = currentHash;
                 right = zeros(i);
                 filledSubtrees[i] = currentHash;
@@ -95,24 +95,25 @@ contract TestMerkleTree {
             currentHash = hasher.poseidon([left, right]);
             unchecked {
                 ++i;
-                checkIndex >>= 1;
             }
         }
         unchecked {
-            currentRootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
-            roots[currentRootIndex] = currentHash;
-            return currentLeafIndex++;
+            uint rootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
+            currentRootIndex = rootIndex;
+            roots[rootIndex] = currentHash;
+            currentLeafIndex = checkIndex + 1;
         }
+        return checkIndex;
     }
 
     function testInsertStorage(uint leaf) public returns (uint) {
-        if (currentLeafIndex == 1 << LEVELS) revert MerkleTreeCapacity();
         uint checkIndex = currentLeafIndex;
+        if (checkIndex == 1 << LEVELS) revert MerkleTreeCapacity();
         uint currentHash = leaf;
         uint left;
         uint right;
         for (uint i; i < LEVELS;) {
-            if (checkIndex % 2 == 0) {
+            if (((checkIndex >> i) & 1) == 0) {
                 left = currentHash;
                 right = z[i];
                 filledSubtrees[i] = currentHash;
@@ -123,14 +124,15 @@ contract TestMerkleTree {
             currentHash = hasher.poseidon([left, right]);
             unchecked {
                 ++i;
-                checkIndex >>= 1;
             }
         }
         unchecked {
-            currentRootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
-            roots[currentRootIndex] = currentHash;
-            return currentLeafIndex++;
+            uint rootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
+            currentRootIndex = rootIndex;
+            roots[rootIndex] = currentHash;
+            currentLeafIndex = checkIndex + 1;
         }
+        return checkIndex;
     }
 
     function testInsert(uint leaf) public returns (uint) {
@@ -340,10 +342,12 @@ contract TestMerkleTree {
         }
         currentHash = hasher.poseidon([left, right]);
         unchecked {
-            currentRootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
-            roots[currentRootIndex] = currentHash;
-            return currentLeafIndex++;
+            uint rootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
+            currentRootIndex = rootIndex;
+            roots[rootIndex] = currentHash;
+            currentLeafIndex = checkIndex + 1;
         }
+        return checkIndex;
     }
 
     function testInsertMod(uint leaf) public returns (uint) {
@@ -572,8 +576,9 @@ contract TestMerkleTree {
         }
         currentHash = hasher.poseidon([left, right]);
         unchecked {
-            currentRootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
-            roots[currentRootIndex] = currentHash;
+            uint rootIndex = addmod(currentRootIndex, 1, ROOTS_CAPACITY);
+            currentRootIndex = rootIndex;
+            roots[rootIndex] = currentHash;
             return currentLeafIndex++;
         }
     }

@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
+const { setStorageAt } = require('@nomicfoundation/hardhat-network-helpers');
 const { poseidonContract } = require('circomlibjs');
 const {
     MerkleTree,
@@ -9,7 +10,12 @@ const {
 const { deployBytes } = require('../scripts/hardhat.utils');
 
 const VERBOSE = false;
-const FUNCTION_NAMES = ['testInsertStorage', 'testInsert', 'testInsertMod', 'testInsertLoop'];
+const FUNCTION_NAMES = [
+    'testInsertStorage',
+    'testInsert',
+    'testInsertMod',
+    'testInsertLoop'
+];
 
 async function insert({contract, tree, element, roots, functionName, verbose}) {
     // submit insert tx, get gas from receipt
@@ -61,6 +67,20 @@ describe("TestMerkleTree.sol - Gas Golfer", function() {
             expect((await this.merkleTreeContract.getLatestRoot()).toString())
                 .to.be.equal(this.merkleTree.root.toString());
             console.log(`    Running tests on ${functionName}.`);
+        });
+
+        it('should revert when the tree is full', async () => {
+            /*
+                simulate a full tree by setting the `currentLeafIndex` variable using hardhat
+                (it would take too long to compute 1m insertions in a test). the slot was
+                found using `hardhat-storage-layout` and running the command `yarn hardhat check`.
+            */
+            await setStorageAt(
+                this.merkleTreeContract.address,
+                2,
+                1048576 // 2 ** 20
+            );
+            await expect(this.merkleTreeContract.testInsert(42)).to.be.reverted;
         });
 
         it('should correctly compute the next root after one insertion', async () => {
@@ -187,6 +207,5 @@ describe("TestMerkleTree.sol - Gas Golfer", function() {
             expect((await this.merkleTreeContract.isKnownRoot(nextToForget)))
                 .to.be.false;
         });
-
     }
 });

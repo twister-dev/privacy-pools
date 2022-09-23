@@ -1,7 +1,10 @@
 require("@nomiclabs/hardhat-waffle");
+require('@nomicfoundation/hardhat-chai-matchers');
 require('hardhat-gas-reporter');
 require('dotenv').config();
 // require('./scripts/hardhat.tasks.js');
+
+// require('hardhat-storage-layout');
 
 const {
     MAINNET_PRIVATE_KEY,
