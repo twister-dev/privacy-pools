@@ -24,16 +24,15 @@ zeroes = [
 
 insert_func_template = '''
 // i == $index$
-if (((checkIndex >> $index$) & 1) == 0) {
-    left = currentHash;
+if (checkIndex >> $index$ & 1 == 0) {
+    left = leaf;
     right = $zero$;
-    filledSubtrees[$index$] = currentHash;
+    filledSubtrees[$index$] = leaf;
 } else {
     left = filledSubtrees[$index$];
-    right = currentHash;
+    right = leaf;
 }
-currentHash = hasher.poseidon([left, right]);
-'''
+leaf = hasher.poseidon([left, right]);'''
 
 text = str()
 for i in range(20):

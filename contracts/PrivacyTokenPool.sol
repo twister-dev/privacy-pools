@@ -58,7 +58,7 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
         } else {
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
-        uint assetMetadata = abi.encode(token, amount).snarkHash();
+        uint assetMetadata = abi.encodePacked(token, amount).snarkHash();
         uint leaf = hasher.poseidon([commitment, assetMetadata]);
         uint leafIndex = insert(leaf);
         emit Deposit(commitment, leaf, token, amount, leafIndex, block.timestamp);

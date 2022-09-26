@@ -2,13 +2,11 @@ const chalk = require('chalk');
 const { expect } = require('chai');
 const { BigNumber } = require('@ethersproject/bignumber');
 const { keccak256 } = require('@ethersproject/solidity');
-const {
-    MerkleTree,
-    generateProof,
-    verifyProof,
-    utils,
-    poseidon,
-} = require('vmtree-sdk');
+const { MerkleTree } = require('../lib/merkleTree');
+const { generateProof } = require('../lib/generateProof');
+const { verifyProof } = require('../lib/verifyProof');
+const utils = require('../lib/utils');
+const { poseidon } = require('../lib/poseidon');
 
 const VERIFIER_JSON = require('../circuits/out/withdraw_from_subset_verifier.json');
 const WASM_FNAME = "./circuits/out/withdraw_from_subset_js/withdraw_from_subset.wasm";
@@ -41,10 +39,15 @@ function verifyMerkleProof({pathElements, pathIndices, leaf, root}) {
 
 describe("withdraw_from_subset.circom (JS tests edition)", function() {
     before(async () => {
-        utils.stringifyBigInts(BigNumber.from(0))
         this.proofCounter = 0;
         this.secrets = utils.unsafeRandomLeaves(42);
         this.commitments = new Array(42);
+        this.secrets.forEach((secret, i) => {
+            this.commitments[i] = poseidon([
+                poseidon([secret]),
+                this.assetMetadata
+            ]);
+        });
         this.allowed_empty_leaves = (new Array(42)).fill(BLOCKED);
         this.blocked_empty_leaves = (new Array(42)).fill(ALLOWED);
         this.assetMetadata = hashAssetMetadata({
@@ -57,13 +60,7 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
             relayer: "0x0000000000000000000000000000000000000000",
             fee: "0"
         })
-        this.secrets.forEach((secret, i) => {
-            this.commitments[i] = poseidon([
-                poseidon([secret]),
-                this.assetMetadata
-            ]);
-        });
-        this.deposit_tree = new MerkleTree({ hasher: poseidon, leaves: this.commitments, baseString: "empty"});
+        this.deposit_tree = new MerkleTree({ hasher: poseidon, leaves: this.commitments, baseString: "empty" });
         // console.log(this.deposit_tree.zeros);
         // console.log(this.deposit_tree.root);
         // process.exit();
@@ -98,9 +95,9 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
         const assetMetadata = this.assetMetadata;
         const withdrawMetadata = this.withdrawMetadata;
         const paths = [0, 4, 7];
-        console.log(chalk.green("The following zkp proof generation times include instantiating the deposit merkle tree and the allowlist tree"));
+        console.log(chalk.green("    The following zkp proof generation times include instantiating the deposit merkle tree and the allowlist tree"));
         for (const path of paths) { try {
-            console.time(`proof ${this.proofCounter}`);
+            console.time(chalk.green(`    proof ${this.proofCounter}`));
             const deposit_tree = new MerkleTree({ hasher: poseidon, leaves: this.commitments, baseString: "empty"});
             const allowlist_tree = new MerkleTree({
                 hasher: poseidon,
@@ -115,7 +112,7 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
             const { pathElements: subsetProof, pathRoot: subsetRoot } = await allowlist_tree.path(path);
             const secret = this.secrets[path];
             const nullifier = poseidon([secret, 1n, path]);
-            const input = utils.stringifyBigInts({
+            const input = utils.toProofInput({
                 root,
                 subsetRoot,
                 nullifier,
@@ -131,7 +128,7 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
                 wasmFileName: WASM_FNAME,
                 zkeyFileName: ZKEY_FNAME
             });
-            console.timeEnd(`proof ${this.proofCounter++}`);
+            console.timeEnd(chalk.green(`    proof ${this.proofCounter++}`));
             expect(await verifyProof({proof, publicSignals, verifierJson: VERIFIER_JSON})).to.be.true;
         } catch (err) { console.error(err); }}
     }).timeout(ZKP_TEST_TIMEOUT);
@@ -170,14 +167,14 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
         const assetMetadata = this.assetMetadata;
         const withdrawMetadata = this.withdrawMetadata;
         const paths = [0, 4, 7];
-        console.log(chalk.blue("The following zkp proof generation times do not include instantiating the deposit merkle tree and the allowlist tree"));
+        console.log(chalk.blue("    The following zkp proof generation times do not include instantiating the deposit merkle tree and the allowlist tree"));
         for (const path of paths) { try {
-            console.time(`proof ${this.proofCounter}`);
+            console.time(chalk.blue(`    proof ${this.proofCounter}`));
             const { pathElements: mainProof, pathRoot: root } = await this.deposit_tree.path(path);
             const { pathElements: subsetProof, pathRoot: subsetRoot } = await this.blocklist_tree.path(path);
             const secret = this.secrets[path];
             const nullifier = poseidon([secret, 1n, path]);
-            const input = utils.stringifyBigInts({
+            const input = utils.toProofInput({
                 root,
                 subsetRoot,
                 nullifier,
@@ -193,7 +190,7 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
                 wasmFileName: WASM_FNAME,
                 zkeyFileName: ZKEY_FNAME
             });
-            console.timeEnd(`proof ${this.proofCounter++}`);
+            console.timeEnd(chalk.blue(`    proof ${this.proofCounter++}`));
             expect(await verifyProof({proof, publicSignals, verifierJson: VERIFIER_JSON})).to.be.true;
         } catch (err) { console.error(err); }}
     }).timeout(ZKP_TEST_TIMEOUT);

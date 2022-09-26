@@ -1,5 +1,4 @@
 require("@nomiclabs/hardhat-waffle");
-require('@nomicfoundation/hardhat-chai-matchers');
 require('hardhat-gas-reporter');
 require('dotenv').config();
 // require('./scripts/hardhat.tasks.js');
@@ -32,7 +31,7 @@ module.exports = {
         sources: "./contracts",
         cache: "./build/cache",
         artifacts: "./build/artifacts",
-        tests: "./hhtest",
+        tests: "./test",
     },
     solidity: {
         compilers: [
