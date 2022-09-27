@@ -91,7 +91,7 @@ async function deployBytes(contractName, abi, bytecode, verbose=true) {
     return contract;
 }
 
-module.exports = {
+Object.assign(module.exports, {
     impersonateAccount,
     stopImpersonatingAccount,
     enableForking,
@@ -103,4 +103,4 @@ module.exports = {
     revertSnapshot,
     deploy,
     deployBytes,
-}
+});

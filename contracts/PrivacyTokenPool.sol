@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./verifiers/withdraw_from_subset_verifier.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IncrementalMerkleTree.sol";
+import "./verifiers/withdraw_from_subset_verifier.sol";
+
 
 contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFromSubsetVerifier {
     using ProofLib for bytes;
@@ -91,8 +92,8 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
             revert UnknownRoot();
         if (fee > amount)
             revert FeeExceedsAmount();
-        uint assetMetadata = abi.encode(token, amount).snarkHash();
-        uint withdrawMetadata = abi.encode(recipient, refund, relayer, fee).snarkHash();
+        uint assetMetadata = abi.encodePacked(token, amount).snarkHash();
+        uint withdrawMetadata = abi.encodePacked(recipient, refund, relayer, fee).snarkHash();
         if (!_verifyWithdrawFromSubsetProof(
             flatProof,
             root,
@@ -104,20 +105,21 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
 
         nullifiers[nullifier] = true;
 
-        if (refund > 0) {
-            payable(recipient).transfer(refund);
-        }
-
         if (token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            if (msg.value != (refund+amount)) revert MsgValueInvalid();
+            if (msg.value != 0) revert MsgValueInvalid();
             if (fee > 0) {
-                payable(recipient).transfer(amount - fee);
+                unchecked {
+                    payable(recipient).transfer(amount - fee);
+                }
                 payable(relayer).transfer(fee);
             } else {
                 payable(recipient).transfer(amount);
             }
         } else {
             if (msg.value != refund) revert MsgValueInvalid();
+            if (refund > 0) {
+               payable(recipient).transfer(refund);
+            }
             if (fee > 0) {
                 IERC20(token).safeTransfer(recipient, amount - fee);
                 IERC20(token).safeTransfer(relayer, fee);
@@ -125,6 +127,7 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
                 IERC20(token).safeTransfer(recipient, amount);
             }
         }
+        emit Withdrawal(recipient, relayer, subsetRoot, nullifier, fee);
 
         return true;
     }

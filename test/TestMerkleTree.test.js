@@ -14,6 +14,7 @@ const FUNCTION_NAMES = [
     'testInsert',
     'testInsertMod',
     'testInsertLoop'
+    // 'insert',
 ];
 
 async function insert({contract, tree, element, roots, functionName, verbose}) {
