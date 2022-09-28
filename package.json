@@ -1,6 +1,7 @@
 {
   "name": "privacy-pools",
   "main": "./lib/index.js",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "git@github.com/twister-dev/privacy-pools.git"
