@@ -1,4 +1,11 @@
 {
+  "name": "privacy-pools",
+  "main": "./lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/twister-dev/privacy-pools.git"
+  },
+  "license" : "GPL-3.0",
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",
     "@ethersproject/keccak256": "^5.7.0",
