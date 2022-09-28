@@ -40,16 +40,6 @@ function verifyMerkleProof({pathElements, pathIndices, leaf, root}) {
 describe("withdraw_from_subset.circom (JS tests edition)", function() {
     before(async () => {
         this.proofCounter = 0;
-        this.secrets = utils.unsafeRandomLeaves(42);
-        this.commitments = new Array(42);
-        this.secrets.forEach((secret, i) => {
-            this.commitments[i] = poseidon([
-                poseidon([secret]),
-                this.assetMetadata
-            ]);
-        });
-        this.allowed_empty_leaves = (new Array(42)).fill(BLOCKED);
-        this.blocked_empty_leaves = (new Array(42)).fill(ALLOWED);
         this.assetMetadata = hashAssetMetadata({
             token: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
             denomination: "1000000000000000000"
@@ -60,10 +50,17 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
             relayer: "0x0000000000000000000000000000000000000000",
             fee: "0"
         })
+        this.secrets = utils.unsafeRandomLeaves(42);
+        this.commitments = new Array(42);
+        this.secrets.forEach((secret, i) => {
+            this.commitments[i] = poseidon([
+                poseidon([secret]),
+                this.assetMetadata
+            ]);
+        });
+        this.allowed_empty_leaves = (new Array(42)).fill(BLOCKED);
+        this.blocked_empty_leaves = (new Array(42)).fill(ALLOWED);
         this.deposit_tree = new MerkleTree({ hasher: poseidon, leaves: this.commitments, baseString: "empty" });
-        // console.log(this.deposit_tree.zeros);
-        // console.log(this.deposit_tree.root);
-        // process.exit();
     });
 
     it("should be able to generate proofs of inclusion in an allow subset", async () => {

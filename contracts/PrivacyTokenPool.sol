@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IncrementalMerkleTree.sol";
 import "./verifiers/withdraw_from_subset_verifier.sol";
 
-
 contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFromSubsetVerifier {
     using ProofLib for bytes;
     using SafeERC20 for IERC20;
