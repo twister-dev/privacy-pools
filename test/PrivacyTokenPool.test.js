@@ -23,7 +23,11 @@ const WASM_FNAME = "./circuits/out/withdraw_from_subset_js/withdraw_from_subset.
 const ZKEY_FNAME = "./circuits/out/withdraw_from_subset_final.zkey";
 
 const VERBOSE = false;
+
+// choose N_DEPOSITS >= 20
 const N_DEPOSITS = 42;
+const HACKER_RATIO = 1/10;
+
 // two seconds per withdrawal
 const WITHDRAWALS_TIMEOUT = N_DEPOSITS * 2000;
 
@@ -63,30 +67,32 @@ describe("PrivacyTokenPool.sol", function() {
             ]);
         });
 
-        // accounts
+        // pre-funded accounts (20 total)
         this.signers = await ethers.getSigners();
+        const goodSignersEnd = Math.floor((1 - HACKER_RATIO) * this.signers.length);
+
         // not hackers. good guys
-        this.goodSigners = this.signers.slice(0, 7);
+        this.goodSigners = this.signers.slice(0, goodSignersEnd);
         // hackers. bad guys
-        this.badSigners = this.signers.slice(7);
+        this.badSigners = this.signers.slice(goodSignersEnd);
+        // console.log(this.goodSigners.map(s => s.address), this.badSigners.map(s => s.address), this.signers.map(s => s.address));
+        // process.exit();
         // full deposits tree (with all of the commitments in this test)
         this.depositTree = new MerkleTree({hasher: poseidon, levels: 20, baseString: "empty"});
         // empty blocklist (this is right-to-left in terms of deposit index)
         this.blocklist = blockList({
             subsetString: (new Array(N_DEPOSITS)).fill('0').join('')
         });
-        // create a relayer address
-        this.relayer = ethers.Wallet.createRandom().connect(ethers.provider);
-        // create fresh recipient addresses and withdrawal order
+        // create fresh recipient addresses and decide random withdrawal order
         this.recipients = new Array(N_DEPOSITS);
         this.withdrawalOrder = new Array(N_DEPOSITS);
         for (let i = 0; i < N_DEPOSITS; i++) {
             this.recipients[i] = ethers.Wallet.createRandom();
             this.withdrawalOrder[i] = i;
         }
-        // random order
         shuffleArray(this.withdrawalOrder);
-        // fund the relayer
+        // create and fund a relayer address
+        this.relayer = ethers.Wallet.createRandom().connect(ethers.provider);
         await setBalance(this.relayer.address, ethers.utils.parseEther("10"));
         // deploy the privacy pool
         this.privacyTokenPool = await deploy("PrivacyTokenPool", [this.poseidonContract.address], VERBOSE);
@@ -106,8 +112,8 @@ describe("PrivacyTokenPool.sol", function() {
         var balanceOfPool = ethers.BigNumber.from(0);
 
         for (let i = 0; i < N_DEPOSITS; i++) {
-            // iterate through the good signers for depositor variety
-            const signer = this.goodSigners[i%7];
+            // iterate through the signers for depositor variety
+            const signer = this.signers[i%this.signers.length];
             // force a specific timestamp (to check against block.timestamp emitted in event)
             const timestamp = Date.now();
             await setNextBlockTimestamp(timestamp);
@@ -137,6 +143,12 @@ describe("PrivacyTokenPool.sol", function() {
 
     it(`should process ${N_DEPOSITS} withdrawals using the empty block list`, async() => {
         for (const i of this.withdrawalOrder) {
+            // withdrawMetadata
+            const recipient = this.recipients[i].address;
+            const refund = 0;
+            const relayer = this.relayer.address;
+            const fee = ethers.utils.parseEther("0.001");
+
             // private inputs
             const secret = this.secrets[i];
             const path = i;
@@ -145,10 +157,6 @@ describe("PrivacyTokenPool.sol", function() {
             // public inputs
             const nullifier = poseidon([secret, 1, i]);
             const assetMetadata = this.assetMetadata;
-            const recipient = this.recipients[i].address;
-            const refund = 0;
-            const relayer = this.relayer.address;
-            const fee = ethers.utils.parseEther("0.001");
             const withdrawMetadata = utils.hashMod(
                 ["address", "uint", "address", "uint"],
                 [recipient, refund, relayer, fee]
@@ -182,7 +190,7 @@ describe("PrivacyTokenPool.sol", function() {
 
             // submit withdrawal
             const flatProof = utils.flattenProof(proof);
-            const tx = this.privacyTokenPool.connect(this.relayer).withdraw(
+            const tx = this.privacyTokenPool.connect(this.relayer).withdrawFromSubset(
                 flatProof,
                 root,
                 subsetRoot,

@@ -68,7 +68,7 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
     /*
         Withdraw using zkProof.
     */
-    function withdraw(
+    function withdrawFromSubset(
         uint[8] calldata flatProof,
         uint root,
         uint subsetRoot,

@@ -7,7 +7,9 @@ interface Poseidon {
 
 contract TestMerkleTree {
 
+    error IndexOutOfRange();
     error MerkleTreeCapacity();
+    error UnknownRoot();
     Poseidon public hasher;
     // do not change the LEVELS value. there's a hardcoded loop below.
     uint public constant LEVELS = 20;
@@ -28,7 +30,7 @@ contract TestMerkleTree {
         hasher = Poseidon(poseidon);
         for (uint i; i < LEVELS;) {
             z[i] = zeros(i);
-            filledSubtrees[i] = zeros(i);
+            // filledSubtrees[i] = zeros(i);
             unchecked { ++i; }
         }
         roots[0] = zeros(20);
@@ -75,6 +77,34 @@ contract TestMerkleTree {
         else if (i == 18) return 5383269053000864513406337829703884940333204026496599059703565359684796208512;
         else if (i == 19) return 13643259613994876902857690028538868307758819349041069235229132599319944746418;
         else if (i == 20) return 21581843949009751067133004474045855475316029363599471302179162475240986081250;
+    }
+
+    /* parametric step function gang */
+    function wtf(uint ei, uint li) internal pure returns (uint) {
+        unchecked { return 2 * (ei / (1 << (li + 1))); }
+    }
+
+    function testUpdate(uint oldLeaf, uint newLeaf, uint oldIndex, uint[] calldata siblings) public {
+        uint latestIndex = currentLeafIndex - 1;
+        if (oldIndex > latestIndex) revert IndexOutOfRange();
+        for (uint i; i < 20;) {
+            if (oldIndex >> i & 1 == 0) {
+                if (wtf(oldIndex, i) == wtf(latestIndex, i)) {
+                    filledSubtrees[i] = newLeaf;
+                }
+                oldLeaf = hasher.poseidon([oldLeaf, siblings[i]]);
+                newLeaf = hasher.poseidon([newLeaf, siblings[i]]);
+            } else {
+                oldLeaf = hasher.poseidon([siblings[i], oldLeaf]);
+                newLeaf = hasher.poseidon([siblings[i], newLeaf]);
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        uint _currentRootIndex = currentRootIndex;
+        if (oldLeaf != roots[_currentRootIndex]) revert UnknownRoot();
+        roots[_currentRootIndex] = newLeaf;
     }
 
     function testInsertLoop(uint leaf) public returns (uint) {

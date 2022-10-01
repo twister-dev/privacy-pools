@@ -10,10 +10,10 @@ const { deployBytes } = require('../scripts/hardhat.utils');
 const VERBOSE = false;
 
 const FUNCTION_NAMES = [
-    'testInsertStorage',
+    // 'testInsertStorage',
     'testInsert',
-    'testInsertMod',
-    'testInsertLoop'
+    // 'testInsertMod',
+    // 'testInsertLoop'
     // 'insert',
 ];
 
@@ -30,6 +30,22 @@ async function insert({contract, tree, element, roots, functionName, verbose}) {
     roots.values[roots.rootIndex] = tree.root;
 }
 
+async function update({contract, tree, oldIndex, newElement, roots, functionName, verbose}) {
+    // get merkle proof for oldElement
+    const element = tree.elements[oldIndex];
+    const { pathElements } = tree.path(oldIndex);
+
+    // submit update tx, get gas from receipt
+    const tx = await contract[functionName](element, newElement, oldIndex, pathElements);
+    const receipt = await tx.wait();
+    if (verbose)
+        console.log("update gas used:", receipt.gasUsed.toString());
+
+    // update element into js tree, change root in js history
+    await tree.update(oldIndex, newElement);
+    roots.values[roots.rootIndex] = tree.root;
+}
+
 // using explicit `function` at this level, instead of an arrow function, gives
 // us a persistent state `this` within nested arrow functions in the test
 describe("TestMerkleTree.sol - Gas Golfer", function() {
@@ -39,7 +55,7 @@ describe("TestMerkleTree.sol - Gas Golfer", function() {
         const abi = poseidonContract.generateABI(2);
         const bytecode = poseidonContract.createCode(2);
         this.poseidonContract = await deployBytes("Poseidon", abi, bytecode, VERBOSE);
-        console.log('   Testing 4 different equivalent functions. Which is the most gas efficient?');
+        console.log(`   Testing ${FUNCTION_NAMES.length} different equivalent functions. Which is the most gas efficient?`);
     });
 
     // deploy a new merkle tree each test
@@ -61,6 +77,48 @@ describe("TestMerkleTree.sol - Gas Golfer", function() {
         // calc random values to insert into the tree. using chunks of 30 so we can check when
         // the root history wraps around
         this.leaves = utils.unsafeRandomLeaves(60);
+    });
+
+    it('should successfully perform update operations', async() => {
+        for (let i = 0; i < 20; i++) {
+            // insert leaves to start with
+            await insert({
+                contract: this.merkleTreeContract,
+                functionName: 'testInsert',
+                tree: this.merkleTree,
+                roots: this.roots,
+                element: this.leaves[i],
+                verbose: VERBOSE
+            });
+            // check that the roots match
+            expect((await this.merkleTreeContract.getLatestRoot()).toString())
+                    .to.be.equal(this.merkleTree.root.toString());
+        }
+
+        for (let i = 0; i < 20; i++) {
+            // update all of the leaves
+            await update({
+                contract: this.merkleTreeContract,
+                functionName: 'testUpdate',
+                tree: this.merkleTree,
+                roots: this.roots,
+                oldIndex: i,
+                newElement: (i + 1) * 420,
+                verbose: VERBOSE
+            });
+            // check that the roots match
+            expect((await this.merkleTreeContract.getLatestRoot()).toString())
+                    .to.be.equal(this.merkleTree.root.toString());
+        }
+
+        // compare with a tree that had those leaves inserted rather than updated
+        const rawTree = new MerkleTree({hasher: poseidon, levels: 20, baseString: "empty"});
+        for (let i = 0; i < 20; i++) {
+            await rawTree.insert((i + 1) * 420);
+        }
+        // check that the contract root is the same
+        expect((await this.merkleTreeContract.getLatestRoot()).toString())
+            .to.be.equal(rawTree.root.toString());
     });
 
     for (const functionName of FUNCTION_NAMES) {
