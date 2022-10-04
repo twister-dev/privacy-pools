@@ -13,7 +13,7 @@ describe("FilledSubtreeFinder.sol", function () {
         for (let i = 0; i < 10; i++) {
             // per layer
             for (let j = 0; j < 20; j++) {
-                await this.finder.getFilledSubtreeIndexGasIndex(i, j);
+                await this.finder.getFilledSubtreeIndexGasEstimate(i, j);
                 expect(
                     await this.finder.getFilledSubtreeIndex(i, j)
                 ).to.be.equal(getFilledSubtreeIndex(i, j));
