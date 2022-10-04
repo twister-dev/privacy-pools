@@ -24,20 +24,20 @@ contract WithdrawFromSubsetVerifier {
         uint256 withdrawMetadata
     ) internal view returns (bool) {
         if (
-            root >= ProofLib.snark_scalar_field ||
-            subsetRoot >= ProofLib.snark_scalar_field ||
-            nullifier >= ProofLib.snark_scalar_field ||
-            assetMetadata >= ProofLib.snark_scalar_field ||
-            withdrawMetadata >= ProofLib.snark_scalar_field
+            root >= ProofLib.SNARK_SCALAR_FIELD ||
+            subsetRoot >= ProofLib.SNARK_SCALAR_FIELD ||
+            nullifier >= ProofLib.SNARK_SCALAR_FIELD ||
+            assetMetadata >= ProofLib.SNARK_SCALAR_FIELD ||
+            withdrawMetadata >= ProofLib.SNARK_SCALAR_FIELD
         ) revert ProofLib.GteSnarkScalarField();
 
         ProofLib.Proof memory proof;
-        proof.A = ProofLib.G1Point(flatProof[0], flatProof[1]);
-        proof.B = ProofLib.G2Point(
+        proof.a = ProofLib.G1Point(flatProof[0], flatProof[1]);
+        proof.b = ProofLib.G2Point(
             [flatProof[2], flatProof[3]],
             [flatProof[4], flatProof[5]]
         );
-        proof.C = ProofLib.G1Point(flatProof[6], flatProof[7]);
+        proof.c = ProofLib.G1Point(flatProof[6], flatProof[7]);
 
         ProofLib.VerifyingKey memory vk = withdrawFromSubsetVerifyingKey();
         ProofLib.G1Point memory vk_x = ProofLib.G1Point(0, 0);
@@ -48,13 +48,13 @@ contract WithdrawFromSubsetVerifier {
         vk_x = vk_x.addition(vk.IC[5].scalarMul(withdrawMetadata));
         vk_x = vk_x.addition(vk.IC[0]);
         return
-            proof.A.negate().pairingProd4(
-                proof.B,
+            proof.a.negate().pairingProd4(
+                proof.b,
                 vk.alfa1,
                 vk.beta2,
                 vk_x,
                 vk.gamma2,
-                proof.C,
+                proof.c,
                 vk.delta2
             );
     }

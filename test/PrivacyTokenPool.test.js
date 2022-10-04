@@ -28,12 +28,12 @@ const ZKEY_FNAME = "./circuits/out/withdraw_from_subset_final.zkey";
 
 const VERBOSE = false;
 
-// choose N_DEPOSITS >= 20
-const N_DEPOSITS = 42;
+// ideally choose N_DEPOSITS >= 20
+const N_DEPOSITS = 20;
 const HACKER_RATIO = 1 / 10;
 
 // two seconds per withdrawal
-const WITHDRAWALS_TIMEOUT = N_DEPOSITS * 2000;
+const WITHDRAWALS_TIMEOUT = N_DEPOSITS * 3000;
 
 function shuffleArray(array) {
     // https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array

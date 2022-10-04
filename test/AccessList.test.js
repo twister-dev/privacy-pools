@@ -4,6 +4,7 @@ const { AccessList } = require("../lib/accessList");
 const { MerkleTree } = require("../lib/merkleTree");
 const { ALLOWED, BLOCKED, randomFEs } = require("../lib/utils");
 
+// N * 31 * 8 determines how many members in the set. raise with caution
 const N = 3;
 
 describe("AccessList.js", function () {
@@ -19,53 +20,56 @@ describe("AccessList.js", function () {
         this.subsetString = subsetString;
     });
 
-    it("should throw when the treeType is invalid", async () => {
-        let treeType;
-        let errMsg = () =>
-            `Invalid treeType: ${treeType}. Use "allowlist" or "blocklist".`;
+    describe("throw cases", () => {
+        it("should throw when the treeType is invalid", async () => {
+            let treeType;
+            let errMsg = () =>
+                `Invalid treeType: ${treeType}. Use "allowlist" or "blocklist".`;
 
-        // `expect(func).to.throw(errMsg)` invokes func() with no arguments, but
-        // we're testing a class constructor so wrap it in a func
-        const newAllowList = () =>
-            new AccessList({ hasher: poseidon, treeType });
-        const newBlockList = () =>
-            new AccessList({ hasher: poseidon, treeType });
+            // `expect(func).to.throw(errMsg)` invokes func() with no arguments, but
+            // we're testing a class constructor so wrap it in a func
+            const newAllowList = () =>
+                new AccessList({ hasher: poseidon, treeType });
+            const newBlockList = () =>
+                new AccessList({ hasher: poseidon, treeType });
 
-        // test when treeType is undefined
-        expect(newAllowList).to.throw(errMsg());
-        expect(newBlockList).to.throw(errMsg());
+            // test when treeType is undefined
+            expect(newAllowList).to.throw(errMsg());
+            expect(newBlockList).to.throw(errMsg());
 
-        // test when treeType is other values
-        treeType = "asdf";
-        expect(newAllowList).to.throw(errMsg());
-        expect(newBlockList).to.throw(errMsg());
-        treeType = "allow_list";
-        expect(newAllowList).to.throw(errMsg());
-        expect(newBlockList).to.throw(errMsg());
+            // test when treeType is other values
+            treeType = "asdf";
+            expect(newAllowList).to.throw(errMsg());
+            expect(newBlockList).to.throw(errMsg());
+            treeType = "allow_list";
+            expect(newAllowList).to.throw(errMsg());
+            expect(newBlockList).to.throw(errMsg());
+        });
+
+        it("should throw on invalid subsetString", async () => {
+            let subsetString;
+            const errMsg = () =>
+                `Invalid subsetString: ${subsetString}. Use a binary string only.`;
+
+            const newAllowList = () =>
+                new AccessList({ treeType: "allowlist", subsetString });
+            const newBlockList = () =>
+                new AccessList({ treeType: "blocklist", subsetString });
+
+            // test when subsetString is undefined
+            expect(newAllowList).to.throw(errMsg());
+            expect(newBlockList).to.throw(errMsg());
+
+            // test when subsetString is a valid `BitSet` constructor but not binary (non-exhaustive tests)
+            subsetString = "0xef";
+            expect(newAllowList).to.throw(errMsg());
+            expect(newBlockList).to.throw(errMsg());
+            subsetString = [0, 1];
+            expect(newAllowList).to.throw(errMsg());
+            expect(newBlockList).to.throw(errMsg());
+        });
     });
 
-    it("should throw on invalid subsetString", async () => {
-        let subsetString;
-        const errMsg = () =>
-            `Invalid subsetString: ${subsetString}. Use a binary string only.`;
-
-        const newAllowList = () =>
-            new AccessList({ treeType: "allowlist", subsetString });
-        const newBlockList = () =>
-            new AccessList({ treeType: "blocklist", subsetString });
-
-        // test when subsetString is undefined
-        expect(newAllowList).to.throw(errMsg());
-        expect(newBlockList).to.throw(errMsg());
-
-        // test when subsetString is a valid `BitSet` constructor but not binary (non-exhaustive tests)
-        subsetString = "0xef";
-        expect(newAllowList).to.throw(errMsg());
-        expect(newBlockList).to.throw(errMsg());
-        subsetString = [0, 1];
-        expect(newAllowList).to.throw(errMsg());
-        expect(newBlockList).to.throw(errMsg());
-    });
 
     it("allowlist tree root should be correct", async () => {
         this.allowlist = new AccessList({

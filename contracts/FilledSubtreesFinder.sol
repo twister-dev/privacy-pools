@@ -19,7 +19,7 @@ contract FilledSubtreesFinder {
     function getFilledSubtreeIndexGasEstimate(
         uint256 elementIndex,
         uint256 layerIndex
-    ) public returns (uint256 filledSubtreeIndex) {
+    ) public payable returns (uint256 filledSubtreeIndex) {
         unchecked {
             filledSubtreeIndex = 2 * (elementIndex / (1 << (layerIndex + 1)));
         }

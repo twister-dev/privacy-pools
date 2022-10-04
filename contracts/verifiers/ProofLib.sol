@@ -193,6 +193,6 @@ library ProofLib {
         return h;
     }
 
-    error GteSNARK_SCALAR_FIELD();
+    error GteSnarkScalarField();
     error PairingLengthsFailed();
 }
