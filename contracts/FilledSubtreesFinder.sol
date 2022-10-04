@@ -13,8 +13,4 @@ contract FilledSubtreesFinder {
             filledSubtreeIndex = 2 * ( elementIndex / (1 << (layerIndex + 1)));
         }
     }
-
-    function asdf(uint e, uint l) public {
-        getFilledSubtreeIndex(e, l);
-    }
 }

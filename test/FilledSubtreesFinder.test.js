@@ -10,7 +10,7 @@ describe("FilledSubtreeFinder.sol", function() {
 
     it("should match between js and solidity", async () => {
         // per element
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 10; i++) {
             // per layer
             for (let j = 0; j < 20; j++) {
                 await this.finder.asdf(i, j);

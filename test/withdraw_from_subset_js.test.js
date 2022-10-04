@@ -14,8 +14,7 @@ const ZKEY_FNAME = "./circuits/out/withdraw_from_subset_final.zkey";
 const ALLOWED = utils.getZero("allowed");
 const BLOCKED = utils.getZero("blocked");
 const ZKP_TEST_TIMEOUT = 20000; // alter if necessary.
-// console.log("Allowed value:", ALLOWED);
-// console.log("Blocked value:", BLOCKED);
+
 
 function hashAssetMetadata({token, denomination}) {
     return BigNumber.from(
@@ -50,7 +49,7 @@ describe("withdraw_from_subset.circom (JS tests edition)", function() {
             relayer: "0x0000000000000000000000000000000000000000",
             fee: "0"
         })
-        this.secrets = utils.unsafeRandomLeaves(42);
+        this.secrets = utils.randomFEs(42);
         this.commitments = new Array(42);
         this.secrets.forEach((secret, i) => {
             this.commitments[i] = poseidon([

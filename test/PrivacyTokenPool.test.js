@@ -5,7 +5,7 @@ const { poseidonContract } = require('circomlibjs');
 const {
     poseidon,
     MerkleTree,
-    blockList,
+    AccessList,
     generateProof,
     verifyProof,
     utils,
@@ -80,9 +80,11 @@ describe("PrivacyTokenPool.sol", function() {
         // full deposits tree (with all of the commitments in this test)
         this.depositTree = new MerkleTree({hasher: poseidon, levels: 20, baseString: "empty"});
         // empty blocklist (this is right-to-left in terms of deposit index)
-        this.blocklist = blockList({
-            subsetString: (new Array(N_DEPOSITS)).fill('0').join('')
+        this.blocklist = new AccessList({
+            treeType: 'blocklist',
+            subsetString: '',
         });
+        this.blocklist.allow(N_DEPOSITS-1);
         // create fresh recipient addresses and decide random withdrawal order
         this.recipients = new Array(N_DEPOSITS);
         this.withdrawalOrder = new Array(N_DEPOSITS);
