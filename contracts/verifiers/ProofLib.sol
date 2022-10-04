@@ -66,12 +66,12 @@ library ProofLib {
     function negate(G1Point memory p) internal pure returns (G1Point memory r) {
         // The prime q in the base field F_q for G1
         uint256 q = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
-        if (p.X == 0 && p.Y == 0) return G1Point(0, 0);
+        if (p.x == 0 && p.y == 0) return G1Point(0, 0);
         uint256 y;
         unchecked {
-            y = q - (p.Y % SNARK_PRIME_P);
+            y = q - (p.y % SNARK_PRIME_P);
         }
-        return G1Point(p.X, y);
+        return G1Point(p.x, y);
     }
 
     /// @return r the sum of two points of G1
@@ -81,10 +81,10 @@ library ProofLib {
         returns (G1Point memory r)
     {
         uint256[4] memory input;
-        input[0] = p1.X;
-        input[1] = p1.Y;
-        input[2] = p2.X;
-        input[3] = p2.Y;
+        input[0] = p1.x;
+        input[1] = p1.y;
+        input[2] = p2.x;
+        input[3] = p2.y;
         bool success;
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -105,8 +105,8 @@ library ProofLib {
         returns (G1Point memory r)
     {
         uint256[3] memory input;
-        input[0] = p.X;
-        input[1] = p.Y;
+        input[0] = p.x;
+        input[1] = p.y;
         input[2] = s;
         bool success;
         // solhint-disable-next-line no-inline-assembly
@@ -134,12 +134,12 @@ library ProofLib {
         uint256 inputSize = elements * 6;
         uint256[] memory input = new uint256[](inputSize);
         for (uint256 i = 0; i < elements; i++) {
-            input[i * 6 + 0] = p1[i].X;
-            input[i * 6 + 1] = p1[i].Y;
-            input[i * 6 + 2] = p2[i].X[0];
-            input[i * 6 + 3] = p2[i].X[1];
-            input[i * 6 + 4] = p2[i].Y[0];
-            input[i * 6 + 5] = p2[i].Y[1];
+            input[i * 6 + 0] = p1[i].x;
+            input[i * 6 + 1] = p1[i].y;
+            input[i * 6 + 2] = p2[i].x[0];
+            input[i * 6 + 3] = p2[i].x[1];
+            input[i * 6 + 4] = p2[i].y[0];
+            input[i * 6 + 5] = p2[i].y[1];
         }
         uint256[1] memory out;
         bool success;
