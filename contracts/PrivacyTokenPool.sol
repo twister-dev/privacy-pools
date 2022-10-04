@@ -6,26 +6,30 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IncrementalMerkleTree.sol";
 import "./verifiers/withdraw_from_subset_verifier.sol";
 
-contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFromSubsetVerifier {
+contract PrivacyTokenPool is
+    ReentrancyGuard,
+    IncrementalMerkleTree,
+    WithdrawFromSubsetVerifier
+{
     using ProofLib for bytes;
     using SafeERC20 for IERC20;
 
     // emit the raw commitment, stamped leaf, plus the data to reconstruct the stamped commitment
     event Deposit(
-        uint indexed commitment,
-        uint indexed leaf,
+        uint256 indexed commitment,
+        uint256 indexed leaf,
         address indexed token,
-        uint amount,
-        uint leafIndex,
-        uint timestamp
+        uint256 amount,
+        uint256 leafIndex,
+        uint256 timestamp
     );
     // emit the subsetRoot with each withdrawal
     event Withdrawal(
         address recipient,
         address indexed relayer,
-        uint indexed subsetRoot,
-        uint nullifier,
-        uint fee
+        uint256 indexed subsetRoot,
+        uint256 nullifier,
+        uint256 fee
     );
 
     // prevent overflow for fee value
@@ -40,28 +44,34 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
     error UnknownRoot();
 
     // double spend records
-    mapping (uint => bool) public nullifiers;
+    mapping(uint256 => bool) public nullifiers;
 
     constructor(address poseidon) IncrementalMerkleTree(poseidon) {}
 
     /*
         Deposit any asset and any amount.
     */
-    function deposit(uint commitment, address token, uint amount)
-        public
-        payable
-        nonReentrant
-        returns (uint)
-    {
+    function deposit(
+        uint256 commitment,
+        address token,
+        uint256 amount
+    ) public payable nonReentrant returns (uint256) {
         if (token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             if (msg.value != amount) revert MsgValueInvalid();
         } else {
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
-        uint assetMetadata = abi.encodePacked(token, amount).snarkHash();
-        uint leaf = hasher.poseidon([commitment, assetMetadata]);
-        uint leafIndex = insert(leaf);
-        emit Deposit(commitment, leaf, token, amount, leafIndex, block.timestamp);
+        uint256 assetMetadata = abi.encodePacked(token, amount).snarkHash();
+        uint256 leaf = hasher.poseidon([commitment, assetMetadata]);
+        uint256 leafIndex = insert(leaf);
+        emit Deposit(
+            commitment,
+            leaf,
+            token,
+            amount,
+            leafIndex,
+            block.timestamp
+        );
         return leafIndex;
     }
 
@@ -69,38 +79,34 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
         Withdraw using zkProof.
     */
     function withdrawFromSubset(
-        uint[8] calldata flatProof,
-        uint root,
-        uint subsetRoot,
-        uint nullifier,
+        uint256[8] calldata flatProof,
+        uint256 root,
+        uint256 subsetRoot,
+        uint256 nullifier,
         address token,
-        uint amount,
+        uint256 amount,
         address recipient,
-        uint refund,
+        uint256 refund,
         address relayer,
-        uint fee
-    )
-        public
-        payable
-        nonReentrant
-        returns (bool)
-    {
-        if (nullifiers[nullifier])
-            revert NoteAlreadySpent();
-        if (!isKnownRoot(root))
-            revert UnknownRoot();
-        if (fee > amount)
-            revert FeeExceedsAmount();
-        uint assetMetadata = abi.encodePacked(token, amount).snarkHash();
-        uint withdrawMetadata = abi.encodePacked(recipient, refund, relayer, fee).snarkHash();
-        if (!_verifyWithdrawFromSubsetProof(
-            flatProof,
-            root,
-            subsetRoot,
-            nullifier,
-            assetMetadata,
-            withdrawMetadata
-        )) revert InvalidZKProof();
+        uint256 fee
+    ) public payable nonReentrant returns (bool) {
+        if (nullifiers[nullifier]) revert NoteAlreadySpent();
+        if (!isKnownRoot(root)) revert UnknownRoot();
+        if (fee > amount) revert FeeExceedsAmount();
+        uint256 assetMetadata = abi.encodePacked(token, amount).snarkHash();
+        uint256 withdrawMetadata = abi
+            .encodePacked(recipient, refund, relayer, fee)
+            .snarkHash();
+        if (
+            !_verifyWithdrawFromSubsetProof(
+                flatProof,
+                root,
+                subsetRoot,
+                nullifier,
+                assetMetadata,
+                withdrawMetadata
+            )
+        ) revert InvalidZKProof();
 
         nullifiers[nullifier] = true;
 
@@ -117,7 +123,7 @@ contract PrivacyTokenPool is ReentrancyGuard, IncrementalMerkleTree, WithdrawFro
         } else {
             if (msg.value != refund) revert MsgValueInvalid();
             if (refund > 0) {
-               payable(recipient).transfer(refund);
+                payable(recipient).transfer(refund);
             }
             if (fee > 0) {
                 IERC20(token).safeTransfer(recipient, amount - fee);

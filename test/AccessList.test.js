@@ -1,25 +1,25 @@
-const { expect } = require('chai');
-const { poseidon } = require('../lib/poseidon');
-const { AccessList } = require('../lib/accessList');
-const { MerkleTree } = require('../lib/merkleTree');
-const { ALLOWED, BLOCKED, randomFEs } = require('../lib/utils');
+const { expect } = require("chai");
+const { poseidon } = require("../lib/poseidon");
+const { AccessList } = require("../lib/accessList");
+const { MerkleTree } = require("../lib/merkleTree");
+const { ALLOWED, BLOCKED, randomFEs } = require("../lib/utils");
 
 const N = 3;
 
-describe("AccessList.js", function() {
+describe("AccessList.js", function () {
     before(async () => {
-
-        // This gives us a random subsetString every test. The length is N * 31 * 8 bits.
+        // This gives us a random subsetString every test. Each random field element is 31 bytes.
+        // The subsetString is just N random field elements concatenated into a bytestring.
         // This corresponds to a list with N * 31 * 8 deposits.
         const randomBytes = randomFEs(N);
-        let subsetString = '';
+        let subsetString = "";
         for (const bytes of randomBytes) {
             subsetString = subsetString.concat(bytes.toString(2));
         }
         this.subsetString = subsetString;
     });
 
-    it('should throw when the treeType is invalid', async () => {
+    it("should throw when the treeType is invalid", async () => {
         let treeType;
         let errMsg = () =>
             `Invalid treeType: ${treeType}. Use "allowlist" or "blocklist".`;
@@ -28,26 +28,27 @@ describe("AccessList.js", function() {
         // we're testing a class constructor so wrap it in a func
         const newAllowList = () =>
             new AccessList({ hasher: poseidon, treeType });
-
         const newBlockList = () =>
             new AccessList({ hasher: poseidon, treeType });
 
         // test when treeType is undefined
         expect(newAllowList).to.throw(errMsg());
         expect(newBlockList).to.throw(errMsg());
+
         // test when treeType is other values
-        treeType = 'asdf';
+        treeType = "asdf";
         expect(newAllowList).to.throw(errMsg());
         expect(newBlockList).to.throw(errMsg());
-        treeType = 'allow_list';
+        treeType = "allow_list";
         expect(newAllowList).to.throw(errMsg());
         expect(newBlockList).to.throw(errMsg());
     });
 
-    it('should throw on invalid subsetString', async () => {
+    it("should throw on invalid subsetString", async () => {
         let subsetString;
         const errMsg = () =>
-            `Invalid subsetString: ${subsetString}. Use a binary string only.`
+            `Invalid subsetString: ${subsetString}. Use a binary string only.`;
+
         const newAllowList = () =>
             new AccessList({ treeType: "allowlist", subsetString });
         const newBlockList = () =>
@@ -57,8 +58,8 @@ describe("AccessList.js", function() {
         expect(newAllowList).to.throw(errMsg());
         expect(newBlockList).to.throw(errMsg());
 
-        // test when subsetString is a valid `BitSet` constructor but not binary
-        subsetString = '0xef';
+        // test when subsetString is a valid `BitSet` constructor but not binary (non-exhaustive tests)
+        subsetString = "0xef";
         expect(newAllowList).to.throw(errMsg());
         expect(newBlockList).to.throw(errMsg());
         subsetString = [0, 1];
@@ -66,12 +67,14 @@ describe("AccessList.js", function() {
         expect(newBlockList).to.throw(errMsg());
     });
 
-    it('allowlist tree root should be correct', async () => {
+    it("allowlist tree root should be correct", async () => {
         this.allowlist = new AccessList({
-            treeType: 'allowlist',
-            subsetString: this.subsetString,
+            treeType: "allowlist",
+            subsetString: this.subsetString
         });
 
+        // when using the subset bit string, we need to go in reverse order because
+        // the BitSet library stores bits right-to-left
         let allowlistLeaves = [];
         for (let i = this.subsetString.length - 1; i >= 0; i--) {
             allowlistLeaves.push(this.subsetString[i] == 0 ? BLOCKED : ALLOWED);
@@ -85,12 +88,12 @@ describe("AccessList.js", function() {
         expect(this.allowlist.root).to.be.equal(this.allowlistTree.root);
     });
 
-    it('blocklist tree root should be correct', async () => {
+    it("blocklist tree root should be correct", async () => {
         this.blocklist = new AccessList({
             hasher: poseidon,
             levels: 20,
-            treeType: 'blocklist',
-            subsetString: this.subsetString,
+            treeType: "blocklist",
+            subsetString: this.subsetString
         });
 
         let blocklistLeaves = [];
@@ -106,13 +109,19 @@ describe("AccessList.js", function() {
         expect(this.blocklist.root).to.be.equal(this.blocklistTree.root);
     });
 
-    it('should extend the tree when setting a bit outside of the index', async () => {
-        const allowlist = new AccessList({treeType: 'allowlist', subsetString: ''});
+    it("should extend the tree when setting a bit outside of the index", async () => {
+        const allowlist = new AccessList({
+            treeType: "allowlist",
+            subsetString: ""
+        });
         expect(allowlist.elements.length).to.be.equal(0);
         allowlist.block(342);
         expect(allowlist.elements.length).to.be.equal(343);
 
-        const blocklist = new AccessList({treeType: 'blocklist', subsetString: ''});
+        const blocklist = new AccessList({
+            treeType: "blocklist",
+            subsetString: ""
+        });
         expect(blocklist.elements.length).to.be.equal(0);
         blocklist.block(215);
         expect(blocklist.elements.length).to.be.equal(216);

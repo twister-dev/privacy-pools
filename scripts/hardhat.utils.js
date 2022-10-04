@@ -15,12 +15,14 @@ async function stopImpersonatingAccount(account) {
 async function enableForking(rpcUrl, blocknumber) {
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                jsonRpcUrl: rpcUrl,
-                blockNumber: blocknumber
+        params: [
+            {
+                forking: {
+                    jsonRpcUrl: rpcUrl,
+                    blockNumber: blocknumber
+                }
             }
-        }]
+        ]
     });
 }
 
@@ -47,13 +49,13 @@ async function setNextBlockTimestamp(time) {
 
 async function mineBlock() {
     await hre.network.provider.request({
-        method: "evm_mine",
+        method: "evm_mine"
     });
 }
 
 async function snapshot() {
     const snapshotId = await hre.network.provider.request({
-        method: "evm_snapshot",
+        method: "evm_snapshot"
     });
     return snapshotId;
 }
@@ -65,7 +67,7 @@ async function revertSnapshot(snapshotId) {
     });
 }
 
-async function deploy(contractName, constructorArgs=[], verbose=true) {
+async function deploy(contractName, constructorArgs = [], verbose = true) {
     let contract;
     let factory = await hre.ethers.getContractFactory(contractName);
     if (constructorArgs == []) {
@@ -74,20 +76,18 @@ async function deploy(contractName, constructorArgs=[], verbose=true) {
         contract = await factory.deploy(...constructorArgs);
     }
     await contract.deployed();
-    if (verbose)
-        console.log(`Deployed ${contractName} at ${contract.address}`);
+    if (verbose) console.log(`Deployed ${contractName} at ${contract.address}`);
     return contract;
 }
 
-async function deployBytes(contractName, abi, bytecode, verbose=true) {
+async function deployBytes(contractName, abi, bytecode, verbose = true) {
     const [signer] = await hre.ethers.getSigners();
     const interface = new hre.ethers.utils.Interface(abi);
     const factory = new hre.ethers.ContractFactory(interface, bytecode, signer);
 
     const contract = await factory.deploy();
     await contract.deployed();
-    if (verbose)
-        console.log(`Deployed ${contractName} at ${contract.address}`);
+    if (verbose) console.log(`Deployed ${contractName} at ${contract.address}`);
     return contract;
 }
 
@@ -102,5 +102,5 @@ Object.assign(module.exports, {
     snapshot,
     revertSnapshot,
     deploy,
-    deployBytes,
+    deployBytes
 });
