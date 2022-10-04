@@ -1,12 +1,12 @@
 require("@nomicfoundation/hardhat-chai-matchers");
-require("hardhat-gas-reporter")
-require("dotenv").config()
+require("hardhat-gas-reporter");
+require("dotenv").config();
 // require('./scripts/hardhat.tasks.js');
 
 // require('hardhat-storage-layout');
 
 const { MAINNET_PRIVATE_KEY, MAINNET_URL, TESTNET_PRIVATE_KEY, TESTNET_URL } =
-    process.env
+    process.env;
 
 module.exports = {
     defaultNetwork: "hardhat",
@@ -42,4 +42,4 @@ module.exports = {
             }
         ]
     }
-}
+};

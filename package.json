@@ -7,9 +7,10 @@
         "url": "git@github.com/twister-dev/privacy-pools.git"
     },
     "scripts": {
-        "prettier": "./node_modules/.bin/prettier -c .",
+        "prettier": "./node_modules/.bin/prettier -c \"./**/*.{js, sol}\"",
         "prettier:js": "./node_modules/.bin/prettier -w ./**/*.js",
-        "prettier:solidity": "./node_modules/.bin/prettier --w contracts/**/*.sol",
+        "prettier:solidity": "./node_modules/.bin/prettier -w contracts/**/*.sol",
+        "prettier:write": "./node_modules/.bin/prettier -w \"./**/*.{js, sol}\"",
         "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol"
     },
     "license": "GPL-3.0",

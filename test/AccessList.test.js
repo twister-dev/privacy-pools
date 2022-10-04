@@ -70,7 +70,6 @@ describe("AccessList.js", function () {
         });
     });
 
-
     it("allowlist tree root should be correct", async () => {
         this.allowlist = new AccessList({
             treeType: "allowlist",

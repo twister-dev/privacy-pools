@@ -291,6 +291,9 @@ describe("PrivacyTokenPool.sol", function () {
             this.privacyTokenPool.deposit(1234, this.token, this.amount, {
                 value: this.amount
             })
-        ).to.be.revertedWithCustomError(this.privacyTokenPool, "MerkleTreeCapacity");
+        ).to.be.revertedWithCustomError(
+            this.privacyTokenPool,
+            "MerkleTreeCapacity"
+        );
     });
 });

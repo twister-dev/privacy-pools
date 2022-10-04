@@ -181,7 +181,10 @@ describe("TestMerkleTree.sol - Gas Golfer", function () {
                 );
                 await expect(
                     this.merkleTreeContract.testInsert(42)
-                ).to.be.revertedWithCustomError(this.merkleTreeContract, "MerkleTreeCapacity");
+                ).to.be.revertedWithCustomError(
+                    this.merkleTreeContract,
+                    "MerkleTreeCapacity"
+                );
             });
 
             it("should correctly compute the next root after one insertion", async () => {
@@ -212,20 +215,22 @@ describe("TestMerkleTree.sol - Gas Golfer", function () {
                         verbose: VERBOSE
                     });
                     expect(
-                        (await this.merkleTreeContract.getLatestRoot()).toString()
+                        (
+                            await this.merkleTreeContract.getLatestRoot()
+                        ).toString()
                     ).to.be.equal(this.merkleTree.root.toString());
                 }
 
                 // should remember the first thirty roots (max capacity of roots history)
                 for (const root of this.roots.values) {
-                    expect(await this.merkleTreeContract.isKnownRoot(root)).to.be
-                        .true;
+                    expect(await this.merkleTreeContract.isKnownRoot(root)).to
+                        .be.true;
                 }
 
                 // do 30th insert, clearing the first root from the history (the zero root)
                 const nextToForget = this.roots.values[0];
-                expect(await this.merkleTreeContract.isKnownRoot(nextToForget)).to
-                    .be.true;
+                expect(await this.merkleTreeContract.isKnownRoot(nextToForget))
+                    .to.be.true;
                 await insert({
                     contract: this.merkleTreeContract,
                     functionName,
@@ -239,8 +244,8 @@ describe("TestMerkleTree.sol - Gas Golfer", function () {
                 ).to.be.equal(this.merkleTree.root.toString());
 
                 // should have overwritten original root now
-                expect(await this.merkleTreeContract.isKnownRoot(nextToForget)).to
-                    .be.false;
+                expect(await this.merkleTreeContract.isKnownRoot(nextToForget))
+                    .to.be.false;
             }).timeout(100000);
 
             it("should correctly compute 60 new roots and forget the first thirty", async () => {
@@ -278,26 +283,28 @@ describe("TestMerkleTree.sol - Gas Golfer", function () {
                         verbose: VERBOSE
                     });
                     expect(
-                        (await this.merkleTreeContract.getLatestRoot()).toString()
+                        (
+                            await this.merkleTreeContract.getLatestRoot()
+                        ).toString()
                     ).to.be.equal(this.merkleTree.root.toString());
                 }
 
                 // should remember current roots
                 for (const root of this.roots.values) {
-                    expect(await this.merkleTreeContract.isKnownRoot(root)).to.be
-                        .true;
+                    expect(await this.merkleTreeContract.isKnownRoot(root)).to
+                        .be.true;
                 }
 
                 // by now we've forgotten all of the original roots
                 for (const root of firstThirtyRoots) {
-                    expect(await this.merkleTreeContract.isKnownRoot(root)).to.be
-                        .false;
+                    expect(await this.merkleTreeContract.isKnownRoot(root)).to
+                        .be.false;
                 }
 
                 // final insert of 60 total. check that the roots index resets again
                 const nextToForget = this.roots.values[0];
-                expect(await this.merkleTreeContract.isKnownRoot(nextToForget)).to
-                    .be.true;
+                expect(await this.merkleTreeContract.isKnownRoot(nextToForget))
+                    .to.be.true;
                 await insert({
                     contract: this.merkleTreeContract,
                     functionName,
@@ -310,8 +317,8 @@ describe("TestMerkleTree.sol - Gas Golfer", function () {
                     (await this.merkleTreeContract.getLatestRoot()).toString()
                 ).to.be.equal(this.merkleTree.root.toString());
 
-                expect(await this.merkleTreeContract.isKnownRoot(nextToForget)).to
-                    .be.false;
+                expect(await this.merkleTreeContract.isKnownRoot(nextToForget))
+                    .to.be.false;
             });
         });
     }
