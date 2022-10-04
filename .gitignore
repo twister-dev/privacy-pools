@@ -7,3 +7,4 @@ build
 backlog
 *.error
 *.log
+.DS_Store

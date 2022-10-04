@@ -32,7 +32,7 @@ This experiment is also important to demonstrate and explore the limits of zero 
  - Unit tests in Solidity:
     - [hhtest/](./hhtest/)
  - Example build of non-custodial privacy pool:
-    - [PrivacyPool.sol](./contracts/PrivacyPool.sol)
+    - [PrivacyTokenPool.sol](./contracts/PrivacyTokenPool.sol)
 
 # Dependencies
  - [npm](https://www.npmjs.com/) / [yarn](https://yarnpkg.com/)
@@ -168,7 +168,7 @@ The size of this list is 30 bits, plus the 3 bytes to represent the first index,
 
 The maximum length of a subset compressed in this form is $2^{20}$ bits, or 128 KiB. Since that’s relatively small, these lists can be stored on-chain in transaction calldata. The list will consume less than 80k gas to be included in calldata up to the 10,000th deposit, less than 800k gas up to the 100,000th deposit, and roughly 8 million gas to post a list up to the final deposit in the tree. In all cases this can fit within the gas limit of a block, and it’s only a one-time cost. We can also use compression to reduce the on-chain footprint.
 
-An alternatively is to represent the access list by explicitly providing the indices of the affected values as an array of `uint24[]`, which is an integer size that is the nearest multiple of 8 that can accommodate the highest index in the trees ($2^{20}$). Following from above this would look like:
+An alternatively is to represent the access list by explicitly providing the indices of the affected values as an array of `uint24[]`, which is an integer size that is the nearest multiple of 8 that can accommodate the highest index in the trees ( $2^{20}$ ). Following from above this would look like:
 
 ```json
 {
