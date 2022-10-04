@@ -14,6 +14,8 @@ contract FilledSubtreesFinder {
         }
     }
 
+    // this is a cheap hack to get the hardhat-gas-reporter plugin to estimate
+    // the gas of this function during the unit test
     function getFilledSubtreeIndexGasEstimate(
         uint256 elementIndex,
         uint256 layerIndex
