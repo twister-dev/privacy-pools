@@ -18,18 +18,15 @@ You can read more about privacy pools in [docs](./docs).
 -   [python3](https://www.python.org/downloads/)
 
 # Install and Test Locally
-
 Only tested on a UNIX-like OS (linux or mac).
 
-### Clone the Repo
-
+## Clone the Repo
 ```sh
 $ git clone https://github.com/twister-dev/privacy-pools
 $ cd privacy-pools
 ```
 
-### Install Dependencies
-
+## Install Dependencies
 ```sh
 $ yarn
 ```
@@ -40,22 +37,39 @@ or
 $ npm install .
 ```
 
-### Setup Circuit Locally
-
+## Setup Circuit Locally
 ```sh
 $ bash ./scripts/setup.sh
 ```
 
-### Test the circuit in JS
-
-```sh
-$ yarn mocha
-```
-
-### Test the circuit in Solidity
-
+## Run the Tests
 ```sh
 $ hardhat test
+```
+
+## Setup and Run Slither
+Install the [solc](https://github.com/ethereum/solidity#build-and-install) compiler. If you're on linux and use `apt` you can install it this way:
+```sh
+$ sudo add-apt-repository ppa:ethereum/ethereum
+$ sudo apt-get update
+$ sudo apt-get install solc
+```
+
+
+Setup python virtual environment:
+```sh
+$ python3 -m venv venv
+$ source ./venv/bin/activate
+(venv) $ pip3 install -r requirements.txt
+```
+Run slither:
+```sh
+(venv) $ slither --hardhat-cache-directory=./build/cache --hardhat-artifacts-directory=./build/artifacts .
+```
+
+If you don't activate the python venv you can use:
+```sh
+$ ./venv/bin/slither --hardhat-cache-directory=./build/cache --hardhat-artifacts-directory=./build/artifacts .
 ```
 
 # Working To Do List
