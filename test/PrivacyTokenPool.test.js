@@ -293,7 +293,7 @@ describe("PrivacyTokenPool.sol", function () {
             })
         ).to.be.revertedWithCustomError(
             this.privacyTokenPool,
-            "MerkleTreeCapacity"
+            "IncrementalMerkleTree__MerkleTreeCapacity"
         );
     });
 });

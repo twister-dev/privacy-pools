@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.16;
 
-interface Poseidon {
-    function poseidon(uint256[2] calldata) external pure returns (uint256);
-}
+import "../interface/Poseidon.sol";
 
 contract TestMerkleTree {
     error IndexOutOfRange();
@@ -25,9 +23,10 @@ contract TestMerkleTree {
     // zero values, but in storage
     mapping(uint256 => uint256) public z;
 
+    // solhint-disable-next-line func-visibility
     constructor(address poseidon) {
         hasher = Poseidon(poseidon);
-        for (uint256 i; i < LEVELS; ) {
+        for (uint256 i = 0; i < LEVELS; ) {
             z[i] = zeros(i);
             // filledSubtrees[i] = zeros(i);
             unchecked {
@@ -44,7 +43,7 @@ contract TestMerkleTree {
     function isKnownRoot(uint256 root) public view returns (bool) {
         if (root == 0) return false;
         uint256 checkIndex = currentRootIndex;
-        for (uint256 i; i < ROOTS_CAPACITY; ) {
+        for (uint256 i = 0; i < ROOTS_CAPACITY; ) {
             if (root == roots[checkIndex]) return true;
             if (checkIndex == 0) checkIndex = ROOTS_CAPACITY;
             unchecked {
@@ -137,7 +136,7 @@ contract TestMerkleTree {
     ) public {
         uint256 latestIndex = currentLeafIndex - 1;
         if (oldIndex > latestIndex) revert IndexOutOfRange();
-        for (uint256 i; i < 20; ) {
+        for (uint256 i = 0; i < 20; ) {
             if ((oldIndex >> i) & 1 == 0) {
                 if (wtf(oldIndex, i) == wtf(latestIndex, i)) {
                     filledSubtrees[i] = newLeaf;
@@ -163,7 +162,7 @@ contract TestMerkleTree {
 
         uint256 left;
         uint256 right;
-        for (uint256 i; i < LEVELS; ) {
+        for (uint256 i = 0; i < LEVELS; ) {
             if (((checkIndex >> i) & 1) == 0) {
                 left = leaf;
                 right = zeros(i);
@@ -191,7 +190,7 @@ contract TestMerkleTree {
         if (checkIndex == 1 << LEVELS) revert MerkleTreeCapacity();
         uint256 left;
         uint256 right;
-        for (uint256 i; i < LEVELS; ) {
+        for (uint256 i = 0; i < LEVELS; ) {
             if ((checkIndex >> i) & 1 == 0) {
                 left = leaf;
                 right = z[i];

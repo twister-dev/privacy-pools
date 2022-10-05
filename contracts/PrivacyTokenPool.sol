@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IncrementalMerkleTree.sol";
 import "./verifiers/withdraw_from_subset_verifier.sol";
+
+error PrivacyTokenPool__FeeExceedsAmount();
+error PrivacyTokenPool__InvalidZKProof();
+error PrivacyTokenPool__MsgValueInvalid();
+error PrivacyTokenPool__NoteAlreadySpent();
+error PrivacyTokenPool__UnknownRoot();
+error PrivacyTokenPool__ZeroAddress();
 
 contract PrivacyTokenPool is
     ReentrancyGuard,
@@ -32,17 +39,6 @@ contract PrivacyTokenPool is
         uint256 fee
     );
 
-    // prevent overflow for fee value
-    error FeeExceedsAmount();
-    // require zk proof to be valid
-    error InvalidZKProof();
-    // check against the value submitted in calldata
-    error MsgValueInvalid();
-    // prevent the double spend
-    error NoteAlreadySpent();
-    // invalid or stale root
-    error UnknownRoot();
-
     // double spend records
     mapping(uint256 => bool) public nullifiers;
 
@@ -56,14 +52,11 @@ contract PrivacyTokenPool is
         address token,
         uint256 amount
     ) public payable nonReentrant returns (uint256) {
-        if (token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            if (msg.value != amount) revert MsgValueInvalid();
-        } else {
-            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        }
+        if (token == address(0)) revert PrivacyTokenPool__ZeroAddress();
         uint256 assetMetadata = abi.encodePacked(token, amount).snarkHash();
         uint256 leaf = hasher.poseidon([commitment, assetMetadata]);
         uint256 leafIndex = insert(leaf);
+
         emit Deposit(
             commitment,
             leaf,
@@ -72,6 +65,12 @@ contract PrivacyTokenPool is
             leafIndex,
             block.timestamp
         );
+
+        if (token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+            if (msg.value != amount) revert PrivacyTokenPool__MsgValueInvalid();
+        } else {
+            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        }
         return leafIndex;
     }
 
@@ -90,9 +89,10 @@ contract PrivacyTokenPool is
         address relayer,
         uint256 fee
     ) public payable nonReentrant returns (bool) {
-        if (nullifiers[nullifier]) revert NoteAlreadySpent();
-        if (!isKnownRoot(root)) revert UnknownRoot();
-        if (fee > amount) revert FeeExceedsAmount();
+        if (nullifiers[nullifier]) revert PrivacyTokenPool__NoteAlreadySpent();
+        if (!isKnownRoot(root)) revert PrivacyTokenPool__UnknownRoot();
+        if (fee > amount) revert PrivacyTokenPool__FeeExceedsAmount();
+        if (recipient == address(0) || relayer == address(0) || token == address(0)) revert PrivacyTokenPool__ZeroAddress();
         uint256 assetMetadata = abi.encodePacked(token, amount).snarkHash();
         uint256 withdrawMetadata = abi
             .encodePacked(recipient, refund, relayer, fee)
@@ -106,12 +106,13 @@ contract PrivacyTokenPool is
                 assetMetadata,
                 withdrawMetadata
             )
-        ) revert InvalidZKProof();
+        ) revert PrivacyTokenPool__InvalidZKProof();
 
         nullifiers[nullifier] = true;
+        emit Withdrawal(recipient, relayer, subsetRoot, nullifier, fee);
 
         if (token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            if (msg.value != 0) revert MsgValueInvalid();
+            if (msg.value != 0) revert PrivacyTokenPool__MsgValueInvalid();
             if (fee > 0) {
                 unchecked {
                     payable(recipient).transfer(amount - fee);
@@ -121,7 +122,7 @@ contract PrivacyTokenPool is
                 payable(recipient).transfer(amount);
             }
         } else {
-            if (msg.value != refund) revert MsgValueInvalid();
+            if (msg.value != refund) revert PrivacyTokenPool__MsgValueInvalid();
             if (refund > 0) {
                 payable(recipient).transfer(refund);
             }
@@ -132,7 +133,6 @@ contract PrivacyTokenPool is
                 IERC20(token).safeTransfer(recipient, amount);
             }
         }
-        emit Withdrawal(recipient, relayer, subsetRoot, nullifier, fee);
 
         return true;
     }

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.16;
 
-import "hardhat/console.sol";
-
-contract FilledSubtreesFinder {
+// This test file is used to compare between js and solidity and estimate the gas
+// of this function.
+// The gas cost is whatever the average gas is in hardhat-gas-reporter, minus
+// the base fee (21000). Probably slightly less as well given that there's
+// a function selector here.
+contract TestFilledSubtreesFinder {
     function getFilledSubtreeIndex(uint256 elementIndex, uint256 layerIndex)
         public
         pure

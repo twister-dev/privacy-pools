@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.16;
 
-interface Poseidon {
-    function poseidon(uint256[2] calldata) external pure returns (uint256);
-}
+import "./interface/Poseidon.sol";
+
+error IncrementalMerkleTree__MerkleTreeCapacity();
 
 // Append only merkle tree
 contract IncrementalMerkleTree {
-    // Merkle Tree accepts up to 2 ** 20 leaves
-    error MerkleTreeCapacity();
-
     // poseidon hash function with 2 inputs
     Poseidon public immutable hasher;
     // do not change the LEVELS value. there's a hardcoded loop below.
@@ -65,7 +62,7 @@ contract IncrementalMerkleTree {
     function isKnownRoot(uint256 root) public view returns (bool) {
         if (root == 0) return false;
         uint256 checkIndex = currentLeafIndex % 30;
-        for (uint256 i; i < ROOTS_CAPACITY; ) {
+        for (uint256 i = 0; i < ROOTS_CAPACITY; ) {
             if (root == roots[checkIndex]) return true;
             if (checkIndex == 0) checkIndex = ROOTS_CAPACITY;
             unchecked {
@@ -87,7 +84,7 @@ contract IncrementalMerkleTree {
     */
     function insert(uint256 leaf) internal returns (uint256) {
         uint256 checkIndex = currentLeafIndex;
-        if (checkIndex == 1 << LEVELS) revert MerkleTreeCapacity();
+        if (checkIndex == 1 << LEVELS) revert IncrementalMerkleTree__MerkleTreeCapacity();
         uint256 left;
         uint256 right;
         // i == 0

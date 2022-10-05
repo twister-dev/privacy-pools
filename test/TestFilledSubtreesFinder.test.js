@@ -2,9 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { getFilledSubtreeIndex } = require("../lib/filledSubtreesFinder");
 
-describe("FilledSubtreeFinder.sol", function () {
+describe("TestFilledSubtreeFinder.sol", function () {
     before(async () => {
-        const factory = await ethers.getContractFactory("FilledSubtreesFinder");
+        const factory = await ethers.getContractFactory(
+            "TestFilledSubtreesFinder"
+        );
         this.finder = await factory.deploy();
     });
 

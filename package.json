@@ -11,7 +11,8 @@
         "prettier:js": "./node_modules/.bin/prettier -w ./**/*.js",
         "prettier:solidity": "./node_modules/.bin/prettier -w contracts/**/*.sol",
         "prettier:write": "./node_modules/.bin/prettier -w \"./**/*.{js, sol}\"",
-        "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol"
+        "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
+        "slither": "./venv/bin/slither --hardhat-cache-directory=./build/cache --hardhat-artifacts-directory=./build/artifacts ."
     },
     "license": "GPL-3.0",
     "dependencies": {
