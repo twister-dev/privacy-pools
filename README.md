@@ -47,6 +47,11 @@ $ bash ./scripts/setup.sh
 $ hardhat test
 ```
 
+## Deploy the Contracts
+```sh
+$ yarn hardhat deploy
+```
+
 ## Setup and Run Slither
 Install the [solc](https://github.com/ethereum/solidity#build-and-install) compiler. If you're on linux and use `apt` you can install it this way:
 ```sh

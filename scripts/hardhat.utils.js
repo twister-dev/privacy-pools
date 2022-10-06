@@ -1,3 +1,5 @@
+const { run } = require("hardhat");
+
 async function impersonateAccount(account) {
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
@@ -91,6 +93,22 @@ async function deployBytes(contractName, abi, bytecode, verbose = true) {
     return contract;
 }
 
+const verify = async (contractAddress, args) => {
+    console.log("Verifying contract....");
+    try {
+        await run("verify:verify", {
+            address: contractAddress,
+            constructorArguments: args
+        });
+    } catch (e) {
+        if (e.message.toLowerCase().includes("already verified")) {
+            console.log("Already verified!");
+        } else {
+            console.log(e);
+        }
+    }
+};
+
 Object.assign(module.exports, {
     impersonateAccount,
     stopImpersonatingAccount,
@@ -102,5 +120,6 @@ Object.assign(module.exports, {
     snapshot,
     revertSnapshot,
     deploy,
-    deployBytes
+    deployBytes,
+    verify
 });
