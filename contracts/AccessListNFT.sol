@@ -9,19 +9,24 @@ contract AccessListNFT is ERC721, Ownable {
 
     // emit the treeType subsetRoot when NFT is minted
     event MintEvent(
-        uint subsetRoot,
-        string treeType
+        uint indexed subsetRoot,
+        TreeType treeType
     );
 
-    struct MetaData{
-        uint blockNumber;
-        string treeType;
+    /**
+        @dev: the zeroth byte is Invalid because we want to avoid preferring either tree type as a default.
+     */
+    enum TreeType {
+        Invalid, Allowlist, Blocklist
     }
 
-    // string public constant TOKEN_URI = 'https://ipfs.io/ipfs/<>';   //stores block.number of the event - to be used for reconstructing the access list.
-    uint256 private s_tokenId;
-    mapping(uint => uint) private s_tokenIdToBlockNumber; // mapping from subset root -> block number
-    mapping(uint => string) private s_tokenIdToTreeType; // mapping from subset root -> tree type
+    struct SubsetMetadata {
+        TreeType treeType;
+        uint248 blockNumber;
+    }
+
+    uint256 public s_tokenId;
+    mapping (uint => SubsetMetadata) public s_subsetRootTosubsetMetadata; // mapping from subset root -> subset meta data
 
     constructor(
         uint subsetRoot,
@@ -30,19 +35,21 @@ contract AccessListNFT is ERC721, Ownable {
     ) ERC721("ACCESS_LIST", "AXL"){}
 
     /**
-        @dev mint NFT. token id of the NFT = subsetRoot
+        @dev mint NFT. Notice:
+        * token id of the NFT = subsetRoot
+        * subsetString is included in calldata so that later we can parse transaction receipts to retrieve the data
     */
     function mintNft(
         uint _subsetRoot,
-        string calldata _treeType
+        TreeType _treeType,
+        bytes memory _subsetString
     ) 
         public 
         onlyOwner
         returns(uint256)
     {
         s_tokenId = _subsetRoot;
-        s_tokenIdToBlockNumber[s_tokenId] = block.number;
-        s_tokenIdToTreeType[s_tokenId] = _treeType;
+        s_subsetRootTosubsetMetadata[s_tokenId] = SubsetMetadata({treeType: _treeType, blockNumber: uint248(block.number)});
         emit MintEvent(s_tokenId, _treeType);
         _safeMint(msg.sender, _subsetRoot);
         return s_tokenId;
@@ -59,19 +66,12 @@ contract AccessListNFT is ERC721, Ownable {
      */
     function tokenURI(
         uint256 _tokenId
-    ) public view override returns(string memory){
-        uint _blockNumber = s_tokenIdToBlockNumber[_tokenId];
-        string memory _treeType = s_tokenIdToTreeType[_tokenId];
-
+    ) public pure override returns(string memory){
         return string(
             abi.encodePacked(
-                "{\"blockNumber\":",
-                Strings.toString(_blockNumber),
-                ",\"treeType\":",
-                "\"",
-                _treeType,
-                "\"",
-                "}"
+                "https://ipfs.io/ipfs/xxxxxxx/",
+                Strings.toString(_tokenId),
+                ".json"
             )
         );
     }
