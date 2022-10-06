@@ -37,7 +37,7 @@ template DoubleMerkleProof(levels, expectedValue) {
     component hashers1[levels];
     component hashers2[levels];
 
-    component pathBits = Num2Bits_strict(levels);
+    component pathBits = Num2Bits(levels);
     pathBits.in <== path;
 
     for (var i = 0; i < levels; i++) {
