@@ -11,7 +11,7 @@ describe("AccessList.js", function () {
     before(async () => {
         // This gives us a random subsetString every test. Each random field element is 31 bytes.
         // The subsetString is just N random field elements concatenated into a bytestring.
-        // This corresponds to a list with N * 31 * 8 deposits.
+        // This corresponds to a list with N * 31 * 8 deposits. It's literally an incomprehensible list.
         const randomBytes = randomFEs(N);
         let subsetString = "";
         for (const bytes of randomBytes) {
@@ -78,6 +78,8 @@ describe("AccessList.js", function () {
 
         // when using the subset bit string, we need to go in reverse order because
         // the BitSet library stores bits right-to-left
+        // furthermore, the bitset library trims trailing zeros so we use the subsetString
+        // because it has the entire length of the subset
         let allowlistLeaves = [];
         for (let i = this.subsetString.length - 1; i >= 0; i--) {
             allowlistLeaves.push(this.subsetString[i] == 0 ? BLOCKED : ALLOWED);
