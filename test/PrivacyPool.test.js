@@ -438,19 +438,19 @@ describe("PrivacyPool.sol", function () {
                         [recipient, relayer, fee]
                     );
 
+                    const input = utils.toProofInput({
+                        root,
+                        subsetRoot,
+                        nullifier,
+                        message,
+                        secret,
+                        path,
+                        mainProof,
+                        subsetProof
+                    });
+
                     let proofError = false;
                     try {
-                        // generate zkp
-                        const input = utils.toProofInput({
-                            root,
-                            subsetRoot,
-                            nullifier,
-                            message,
-                            secret,
-                            path,
-                            mainProof,
-                            subsetProof
-                        });
                         await generateProof({
                             input,
                             wasmFileName: WASM_FNAME,
@@ -459,6 +459,8 @@ describe("PrivacyPool.sol", function () {
                     } catch (err) {
                         // I couldn't get expect(...).to.throw() to work, probably
                         // because the error is an assertion happening in wasm?
+                        // error src:
+                        // https://github.com/iden3/circom_runtime/blob/master/js/witness_calculator.js#L72-L82
                         proofError = true;
                     }
                     expect(proofError).to.be.true;
@@ -468,6 +470,82 @@ describe("PrivacyPool.sol", function () {
     });
 
     describe("revert cases", () => {
+        it("should revert with `ReentrancyGuard: reentrant call`", async () => {
+            // testing: recipient reentrancy attack
+            // testing: relayer reentrancy attack
+            const reentrancyAttacker = await deploy(
+                "ReentrancyAttacker",
+                [],
+                VERBOSE
+            );
+            const fee = ethers.utils.parseEther("0.001");
+
+            // private inputs
+            const secret = this.secrets[0];
+            const path = 0;
+            const { pathElements: mainProof, pathRoot: root } =
+                this.depositTree.path(path);
+            const { pathElements: subsetProof, pathRoot: subsetRoot } =
+                this.hackerBlocklist.path(path);
+
+            // public inputs
+            const nullifier = poseidon([secret, 1, path]);
+
+            let recipient, relayer;
+            for (const s of [0, 1]) {
+                if (s === 0) {
+                    recipient = reentrancyAttacker.address;
+                    relayer = this.relayer.address;
+                } else {
+                    recipient = this.relayer.address;
+                    relayer = reentrancyAttacker.address;
+                }
+                const message = utils.hashMod(
+                    ["address", "address", "uint"],
+                    [recipient, relayer, fee]
+                );
+
+                // generate zkp
+                const input = utils.toProofInput({
+                    root,
+                    subsetRoot,
+                    nullifier,
+                    message,
+                    secret,
+                    path,
+                    mainProof,
+                    subsetProof
+                });
+                const { proof, publicSignals } = await generateProof({
+                    input,
+                    wasmFileName: WASM_FNAME,
+                    zkeyFileName: ZKEY_FNAME
+                });
+
+                // verify zkp in js (will get verified in contract too)
+                expect(
+                    await verifyProof({
+                        proof,
+                        publicSignals,
+                        verifierJson: VERIFIER_JSON
+                    })
+                ).to.be.true;
+
+                const flatProof = utils.flattenProof(proof);
+                await expect(
+                    this.privacyPool.withdraw(
+                        flatProof,
+                        root,
+                        subsetRoot,
+                        nullifier,
+                        recipient,
+                        relayer,
+                        fee
+                    )
+                ).to.be.revertedWith("ReentrancyGuard: reentrant call");
+            }
+        });
+
         it("should revert with `PrivacyPool__FeeExceedsDenomination()`", async () => {
             // testing: fee > denomination
 
