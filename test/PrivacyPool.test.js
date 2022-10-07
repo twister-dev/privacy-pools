@@ -30,9 +30,9 @@ const VERBOSE = false;
 
 // ideally choose N_DEPOSITS >= 20
 const N_DEPOSITS = 20;
-const HACKER_RATIO = 1 / 10;
+const HACKER_RATIO = 1 / 4;
 
-// two seconds per withdrawal
+// 3 seconds per withdrawal
 const WITHDRAWALS_TIMEOUT = N_DEPOSITS * 3000;
 
 function shuffleArray(array) {
@@ -62,7 +62,7 @@ describe("PrivacyPool.sol", function () {
         this.denomination = ethers.utils.parseEther("1");
 
         // random secrets and commitments
-        this.secrets = utils.unsafeRandomLeaves(N_DEPOSITS);
+        this.secrets = utils.randomFEs(N_DEPOSITS);
         this.commitments = this.secrets.map((secret) => poseidon([secret]));
 
         // pre-funded accounts (20 total)
@@ -81,12 +81,19 @@ describe("PrivacyPool.sol", function () {
             levels: 20,
             baseString: "empty"
         });
-        // empty blocklist (this is right-to-left in terms of deposit index)
-        this.blocklist = new AccessList({
+        // empty blocklist
+        this.emptyBlocklist = new AccessList({
             treeType: "blocklist",
             subsetString: ""
         });
-        this.blocklist.allow(N_DEPOSITS - 1);
+        this.emptyBlocklist.allow(N_DEPOSITS - 1);
+        // hacker blocklist
+        this.hackerBlocklist = new AccessList({
+            treeType: "blocklist",
+            subsetString: ""
+        });
+        // will get updated during deposits to block the bad signers
+        this.hackerBlocklist.allow(N_DEPOSITS - 1);
         // create fresh recipient addresses and decide random withdrawal order
         this.recipients = new Array(N_DEPOSITS);
         this.withdrawalOrder = new Array(N_DEPOSITS);
@@ -98,6 +105,7 @@ describe("PrivacyPool.sol", function () {
         // create and fund a relayer address
         this.relayer = ethers.Wallet.createRandom().connect(ethers.provider);
         await setBalance(this.relayer.address, ethers.utils.parseEther("10"));
+
         // deploy the privacy pool
         this.privacyPool = await deploy(
             "PrivacyPool",
@@ -106,61 +114,495 @@ describe("PrivacyPool.sol", function () {
         );
     });
 
-    it(`should deposit ${N_DEPOSITS} times`, async () => {
-        // check empty root before any deposits
-        expect((await this.privacyPool.getLatestRoot()).toString()).to.be.equal(
-            this.depositTree.root.toString()
-        );
+    beforeEach(async () => {
+        if (typeof this.fullSnapshot !== "undefined") {
+            // revert to full deposits snapshot
+            await revertSnapshot(this.fullSnapshot);
+            // save it again (it gets deleted upon revert)
+            this.fullSnapshot = await snapshot();
+        }
+    });
 
-        // we'll check that the pool ETH balance increases after each deposit
-        var balanceOfPool = ethers.BigNumber.from(0);
-
-        for (let i = 0; i < N_DEPOSITS; i++) {
-            // iterate through the signers for depositor variety
-            const signer = this.signers[i % this.signers.length];
-            // force a specific timestamp (to check against block.timestamp emitted in event)
-            const timestamp = Date.now();
-            await setNextBlockTimestamp(timestamp);
-
-            const tx = this.privacyPool
-                .connect(signer)
-                .deposit(this.commitments[i], { value: this.denomination });
-            // deposit using commitment, check event log data for commitment
-            await expect(tx)
-                .to.emit(this.privacyPool, "Deposit")
-                .withArgs(this.commitments[i], this.denomination, i, timestamp);
-            // check that the roots match between JS and evm
-            await this.depositTree.insert(this.commitments[i]);
+    describe("success cases", () => {
+        it(`should deposit ${N_DEPOSITS} times`, async () => {
+            // check empty root before any deposits
             expect(
                 (await this.privacyPool.getLatestRoot()).toString()
             ).to.be.equal(this.depositTree.root.toString());
 
-            // check pool has received the ETH
-            balanceOfPool = balanceOfPool.add(this.denomination);
-            expect(
-                await ethers.provider.getBalance(this.privacyPool.address)
-            ).to.be.equal(balanceOfPool);
-        }
-        // save snapshot of full deposits
-        this.snapshot = await snapshot();
-    }).timeout(WITHDRAWALS_TIMEOUT / 2);
+            // we'll check that the pool ETH balance increases after each deposit
+            var balanceOfPool = ethers.BigNumber.from(0);
 
-    it(`should process ${N_DEPOSITS} withdrawals using the empty block list`, async () => {
-        for (const i of this.withdrawalOrder) {
-            // message data
-            const recipient = this.recipients[i].address;
+            for (let i = 0; i < N_DEPOSITS; i++) {
+                const signerIndex = i % this.signers.length;
+                if (signerIndex >= this.goodSigners.length) {
+                    this.hackerBlocklist.block(i);
+                }
+                // iterate through the signers for depositor variety
+                const signer = this.signers[signerIndex];
+                // force a specific timestamp (to check against block.timestamp emitted in event)
+                const timestamp = Date.now();
+                await setNextBlockTimestamp(timestamp);
+
+                const tx = this.privacyPool
+                    .connect(signer)
+                    .deposit(this.commitments[i], { value: this.denomination });
+                // deposit using commitment, check event log data for commitment
+                await expect(tx)
+                    .to.emit(this.privacyPool, "Deposit")
+                    .withArgs(
+                        this.commitments[i],
+                        this.denomination,
+                        i,
+                        timestamp
+                    );
+                // check that the roots match between JS and evm
+                await this.depositTree.insert(this.commitments[i]);
+                expect(
+                    (await this.privacyPool.getLatestRoot()).toString()
+                ).to.be.equal(this.depositTree.root.toString());
+
+                // check pool has received the ETH
+                balanceOfPool = balanceOfPool.add(this.denomination);
+                expect(
+                    await ethers.provider.getBalance(this.privacyPool.address)
+                ).to.be.equal(balanceOfPool);
+            }
+            // save snapshot of full deposits
+            this.fullSnapshot = await snapshot();
+        }).timeout(WITHDRAWALS_TIMEOUT / 2);
+
+        describe("withdrawals with empty blocklist -- everyone can always withdraw", () => {
+            it(`should process ${N_DEPOSITS} withdrawals using the empty block list`, async () => {
+                for (const i of this.withdrawalOrder) {
+                    // message data
+                    const recipient = this.recipients[i].address;
+                    const relayer = this.relayer.address;
+                    const fee = ethers.utils.parseEther("0.001");
+
+                    // private inputs
+                    const secret = this.secrets[i];
+                    const path = i;
+                    const { pathElements: mainProof, pathRoot: root } =
+                        this.depositTree.path(path);
+                    const { pathElements: subsetProof, pathRoot: subsetRoot } =
+                        this.emptyBlocklist.path(path);
+                    // public inputs
+                    const nullifier = poseidon([secret, 1, i]);
+                    const message = utils.hashMod(
+                        ["address", "address", "uint"],
+                        [recipient, relayer, fee]
+                    );
+
+                    // generate zkp
+                    const input = utils.toProofInput({
+                        root,
+                        subsetRoot,
+                        nullifier,
+                        message,
+                        secret,
+                        path,
+                        mainProof,
+                        subsetProof
+                    });
+                    const { proof, publicSignals } = await generateProof({
+                        input,
+                        wasmFileName: WASM_FNAME,
+                        zkeyFileName: ZKEY_FNAME
+                    });
+
+                    // verify zkp in js (will get verified in contract too)
+                    expect(
+                        await verifyProof({
+                            proof,
+                            publicSignals,
+                            verifierJson: VERIFIER_JSON
+                        })
+                    ).to.be.true;
+
+                    // checkpoint balances before withdrawal
+                    const relayerBalanceBefore =
+                        await ethers.provider.getBalance(relayer);
+                    const poolBalanceBefore = await ethers.provider.getBalance(
+                        this.privacyPool.address
+                    );
+                    const recipientBalanceBefore =
+                        await ethers.provider.getBalance(recipient);
+
+                    const flatProof = utils.flattenProof(proof);
+                    // store the calldata of a valid withdrawal for testing revert cases later
+                    if (typeof this.zkpCalldata === "undefined")
+                        this.zkpCalldata = [
+                            flatProof,
+                            root,
+                            subsetRoot,
+                            nullifier,
+                            recipient,
+                            relayer,
+                            fee
+                        ];
+
+                    // submit withdrawal
+                    const tx = this.privacyPool
+                        .connect(this.relayer)
+                        .withdraw(
+                            flatProof,
+                            root,
+                            subsetRoot,
+                            nullifier,
+                            recipient,
+                            relayer,
+                            fee
+                        );
+                    // check the event emitted with correct data
+                    await expect(tx)
+                        .to.emit(this.privacyPool, "Withdrawal")
+                        .withArgs(
+                            recipient,
+                            relayer,
+                            subsetRoot,
+                            nullifier,
+                            fee
+                        );
+
+                    // check relayer balance increased by `fee - txFee`
+                    const { gasUsed, effectiveGasPrice } = await (
+                        await tx
+                    ).wait();
+                    expect(
+                        await ethers.provider.getBalance(relayer)
+                    ).to.be.equal(
+                        relayerBalanceBefore
+                            .add(fee)
+                            .sub(gasUsed.mul(effectiveGasPrice))
+                    );
+                    // check recipient balance increased by `amount - fee`
+                    expect(
+                        await ethers.provider.getBalance(recipient)
+                    ).to.be.equal(
+                        recipientBalanceBefore.add(this.denomination.sub(fee))
+                    );
+                    // check that pool balance decreased by `amount`
+                    expect(
+                        await ethers.provider.getBalance(
+                            this.privacyPool.address
+                        )
+                    ).to.be.equal(poolBalanceBefore.sub(this.denomination));
+                }
+            }).timeout(WITHDRAWALS_TIMEOUT);
+        });
+
+        describe("withdrawals with hacker-filled blocklist; good signers can use it; bad signers can't", () => {
+            it(`should process good withdrawals using the hacker block list`, async () => {
+                for (const i of this.withdrawalOrder) {
+                    // we're still doing random order, just skipping the bad signers
+                    if (i >= this.goodSigners.length) continue;
+
+                    // message data
+                    const recipient = this.recipients[i].address;
+                    const relayer = this.relayer.address;
+                    const fee = ethers.utils.parseEther("0.001");
+
+                    // private inputs
+                    const secret = this.secrets[i];
+                    const path = i;
+                    const { pathElements: mainProof, pathRoot: root } =
+                        this.depositTree.path(path);
+                    const { pathElements: subsetProof, pathRoot: subsetRoot } =
+                        this.hackerBlocklist.path(path);
+                    // public inputs
+                    const nullifier = poseidon([secret, 1, i]);
+                    const message = utils.hashMod(
+                        ["address", "address", "uint"],
+                        [recipient, relayer, fee]
+                    );
+
+                    // generate zkp
+                    const input = utils.toProofInput({
+                        root,
+                        subsetRoot,
+                        nullifier,
+                        message,
+                        secret,
+                        path,
+                        mainProof,
+                        subsetProof
+                    });
+                    const { proof, publicSignals } = await generateProof({
+                        input,
+                        wasmFileName: WASM_FNAME,
+                        zkeyFileName: ZKEY_FNAME
+                    });
+
+                    // verify zkp in js (will get verified in contract too)
+                    expect(
+                        await verifyProof({
+                            proof,
+                            publicSignals,
+                            verifierJson: VERIFIER_JSON
+                        })
+                    ).to.be.true;
+
+                    // checkpoint balances before withdrawal
+                    const relayerBalanceBefore =
+                        await ethers.provider.getBalance(relayer);
+                    const poolBalanceBefore = await ethers.provider.getBalance(
+                        this.privacyPool.address
+                    );
+                    const recipientBalanceBefore =
+                        await ethers.provider.getBalance(recipient);
+
+                    const flatProof = utils.flattenProof(proof);
+                    // store the calldata of a valid withdrawal for testing revert cases later
+                    if (typeof this.zkpCalldata === "undefined")
+                        this.zkpCalldata = [
+                            flatProof,
+                            root,
+                            subsetRoot,
+                            nullifier,
+                            recipient,
+                            relayer,
+                            fee
+                        ];
+
+                    // submit withdrawal
+                    const tx = this.privacyPool
+                        .connect(this.relayer)
+                        .withdraw(
+                            flatProof,
+                            root,
+                            subsetRoot,
+                            nullifier,
+                            recipient,
+                            relayer,
+                            fee
+                        );
+                    // check the event emitted with correct data
+                    await expect(tx)
+                        .to.emit(this.privacyPool, "Withdrawal")
+                        .withArgs(
+                            recipient,
+                            relayer,
+                            subsetRoot,
+                            nullifier,
+                            fee
+                        );
+
+                    // check relayer balance increased by `fee - txFee`
+                    const { gasUsed, effectiveGasPrice } = await (
+                        await tx
+                    ).wait();
+                    expect(
+                        await ethers.provider.getBalance(relayer)
+                    ).to.be.equal(
+                        relayerBalanceBefore
+                            .add(fee)
+                            .sub(gasUsed.mul(effectiveGasPrice))
+                    );
+                    // check recipient balance increased by `amount - fee`
+                    expect(
+                        await ethers.provider.getBalance(recipient)
+                    ).to.be.equal(
+                        recipientBalanceBefore.add(this.denomination.sub(fee))
+                    );
+                    // check that pool balance decreased by `amount`
+                    expect(
+                        await ethers.provider.getBalance(
+                            this.privacyPool.address
+                        )
+                    ).to.be.equal(poolBalanceBefore.sub(this.denomination));
+                }
+            }).timeout(WITHDRAWALS_TIMEOUT);
+
+            it(`should prevent bad withdrawals from using the hacker block list`, async () => {
+                for (const i of this.withdrawalOrder) {
+                    // we're still doing random order, just skipping the bad signers
+                    if (i < this.goodSigners.length) continue;
+
+                    // message data
+                    const recipient = this.recipients[i].address;
+                    const relayer = this.relayer.address;
+                    const fee = ethers.utils.parseEther("0.001");
+
+                    // private inputs
+                    const secret = this.secrets[i];
+                    const path = i;
+                    const { pathElements: mainProof, pathRoot: root } =
+                        this.depositTree.path(path);
+                    const { pathElements: subsetProof, pathRoot: subsetRoot } =
+                        this.hackerBlocklist.path(path);
+                    // public inputs
+                    const nullifier = poseidon([secret, 1, i]);
+                    const message = utils.hashMod(
+                        ["address", "address", "uint"],
+                        [recipient, relayer, fee]
+                    );
+
+                    let proofError = false;
+                    try {
+                        // generate zkp
+                        const input = utils.toProofInput({
+                            root,
+                            subsetRoot,
+                            nullifier,
+                            message,
+                            secret,
+                            path,
+                            mainProof,
+                            subsetProof
+                        });
+                        await generateProof({
+                            input,
+                            wasmFileName: WASM_FNAME,
+                            zkeyFileName: ZKEY_FNAME
+                        });
+                    } catch (err) {
+                        // I couldn't get expect(...).to.throw() to work, probably
+                        // because the error is an assertion happening in wasm?
+                        proofError = true;
+                    }
+                    expect(proofError).to.be.true;
+                }
+            }).timeout(WITHDRAWALS_TIMEOUT);
+        });
+    });
+
+    describe("revert cases", () => {
+        it("should revert with `PrivacyPool__FeeExceedsDenomination()`", async () => {
+            // testing: fee > denomination
+
+            // this calldata is a valid withdrawal, we're gonna manipulate some of the values
+            // for the following revert tests
+            const [
+                flatProof,
+                root,
+                subsetRoot,
+                nullifier,
+                recipient,
+                relayer,
+                fee
+            ] = this.zkpCalldata;
+            // set fee to denomination + 1 wei
+            await expect(
+                this.privacyPool.withdraw(
+                    flatProof,
+                    root,
+                    subsetRoot,
+                    nullifier,
+                    recipient,
+                    relayer,
+                    ethers.utils.parseEther("1.000000000000000001")
+                )
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__FeeExceedsDenomination"
+            );
+        });
+
+        it("should revert with `PrivacyPool__InvalidZKProof()`", async () => {
+            // testing: relayer tries to change recipient (steal funds)
+            // testing: relayer tries to increase fee (steal funds)
+            // testing: relayer tries to change relayer (associates user with unknown relayer entity)
+            const [
+                flatProof,
+                root,
+                subsetRoot,
+                nullifier,
+                recipient,
+                relayer,
+                fee
+            ] = this.zkpCalldata;
+
+            // set recipient to relayer address
+            await expect(
+                this.privacyPool.withdraw(
+                    flatProof,
+                    root,
+                    subsetRoot,
+                    nullifier,
+                    relayer,
+                    relayer,
+                    fee
+                )
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__InvalidZKProof"
+            );
+
+            // set fee 1 wei less than denomination
+            await expect(
+                this.privacyPool.withdraw(
+                    flatProof,
+                    root,
+                    subsetRoot,
+                    nullifier,
+                    recipient,
+                    relayer,
+                    ethers.utils.parseEther("0.999999999999999999")
+                )
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__InvalidZKProof"
+            );
+
+            // change relayer to a different address
+            await expect(
+                this.privacyPool.withdraw(
+                    flatProof,
+                    root,
+                    subsetRoot,
+                    nullifier,
+                    recipient,
+                    ethers.Wallet.createRandom().address,
+                    fee
+                )
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__InvalidZKProof"
+            );
+        });
+
+        it("should revert with `PrivacyPool__MsgValueInvalid()`", async () => {
+            // try to deposit without sending any eth
+            await expect(
+                this.privacyPool.deposit(123456789)
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__MsgValueInvalid"
+            );
+
+            // try to deposit by sending less than denomination eth
+            await expect(this.privacyPool.deposit(123456789), {
+                value: ethers.utils.parseEther("0.1")
+            }).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__MsgValueInvalid"
+            );
+        });
+
+        it("should revert with `PrivacyPool__UnknownRoot()`", async () => {
+            // try to withdraw by constructing a proof in an invalid tree
+            // we're going to update a leaf and try to withdraw using that tree
+            const secret = utils.randomFEs(1)[0];
+            const fakeCommitment = poseidon([secret]);
+
+            const recipient = ethers.Wallet.createRandom().address;
             const relayer = this.relayer.address;
             const fee = ethers.utils.parseEther("0.001");
 
-            // private inputs
-            const secret = this.secrets[i];
-            const path = i;
+            // try to spoof the 17th deposit
+            const path = 16;
+            this.depositTree.update(path, fakeCommitment);
             const { pathElements: mainProof, pathRoot: root } =
                 this.depositTree.path(path);
             const { pathElements: subsetProof, pathRoot: subsetRoot } =
-                this.blocklist.path(path);
+                this.emptyBlocklist.path(path);
+
+            // restore the tree to its valid state after the proof gets computed
+            this.depositTree.update(path, this.commitments[path]);
+
             // public inputs
-            const nullifier = poseidon([secret, 1, i]);
+            const nullifier = poseidon([secret, 1, path]);
             const message = utils.hashMod(
                 ["address", "address", "uint"],
                 [recipient, relayer, fee]
@@ -183,7 +625,9 @@ describe("PrivacyPool.sol", function () {
                 zkeyFileName: ZKEY_FNAME
             });
 
-            // verify zkp in js (will get verified in contract too)
+            // verify zkp in js
+            // there's nothing wrong with the math for the zkp.
+            // it's just that the tree doesn't match the contract
             expect(
                 await verifyProof({
                     proof,
@@ -192,22 +636,9 @@ describe("PrivacyPool.sol", function () {
                 })
             ).to.be.true;
 
-            // checkpoint balances before withdrawal
-            const relayerBalanceBefore = await ethers.provider.getBalance(
-                relayer
-            );
-            const poolBalanceBefore = await ethers.provider.getBalance(
-                this.privacyPool.address
-            );
-            const recipientBalanceBefore = await ethers.provider.getBalance(
-                recipient
-            );
-
-            // submit withdrawal
             const flatProof = utils.flattenProof(proof);
-            const tx = this.privacyPool
-                .connect(this.relayer)
-                .withdraw(
+            await expect(
+                this.privacyPool.withdraw(
                     flatProof,
                     root,
                     subsetRoot,
@@ -215,46 +646,87 @@ describe("PrivacyPool.sol", function () {
                     recipient,
                     relayer,
                     fee
-                );
-            // check the event emitted with correct data
-            await expect(tx)
-                .to.emit(this.privacyPool, "Withdrawal")
-                .withArgs(recipient, relayer, subsetRoot, nullifier, fee);
-
-            // check relayer balance increased by `fee - txFee`
-            const { gasUsed, effectiveGasPrice } = await (await tx).wait();
-            expect(await ethers.provider.getBalance(relayer)).to.be.equal(
-                relayerBalanceBefore
-                    .add(fee)
-                    .sub(gasUsed.mul(effectiveGasPrice))
+                )
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__UnknownRoot"
             );
-            // check recipient balance increased by `amount - fee`
-            expect(await ethers.provider.getBalance(recipient)).to.be.equal(
-                recipientBalanceBefore.add(this.denomination.sub(fee))
-            );
-            // check that pool balance decreased by `amount`
-            expect(
-                await ethers.provider.getBalance(this.privacyPool.address)
-            ).to.be.equal(poolBalanceBefore.sub(this.denomination));
-        }
-    }).timeout(WITHDRAWALS_TIMEOUT);
+        });
 
-    it("should revert with `MerkleTreeCapacity` when the tree is full", async () => {
-        /*
-            simulate a full tree by setting the `currentLeafIndex` variable using hardhat
-            (it would take too long to compute 1048576 insertions in a hardhat test). the slot was
-            found using `hardhat-storage-layout` and running the command `hardhat compile && hardhat check`.
-        */
-        await setStorageAt(
-            this.privacyPool.address,
-            1,
-            1048576 // 2 ** 20
-        );
-        await expect(
-            this.privacyPool.deposit(1234, { value: this.denomination })
-        ).to.be.revertedWithCustomError(
-            this.privacyPool,
-            "IncrementalMerkleTree__MerkleTreeCapacity"
-        );
+        it("should revert with `PrivacyPool__ZeroAddress()`", async () => {
+            const [
+                flatProof,
+                root,
+                subsetRoot,
+                nullifier,
+                recipient,
+                relayer,
+                fee
+            ] = this.zkpCalldata;
+
+            // check that recipient == zero address fails
+            await expect(
+                this.privacyPool.withdraw(
+                    flatProof,
+                    root,
+                    subsetRoot,
+                    nullifier,
+                    ethers.constants.AddressZero,
+                    relayer,
+                    fee
+                )
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__ZeroAddress"
+            );
+
+            // check that relayer == zero address fails
+            await expect(
+                this.privacyPool.withdraw(
+                    flatProof,
+                    root,
+                    subsetRoot,
+                    nullifier,
+                    recipient,
+                    ethers.constants.AddressZero,
+                    fee
+                )
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__ZeroAddress"
+            );
+        });
+
+        it("should revert with `PrivacyPool__NoteAlreadySpent()`", async () => {
+            // valid withdraw using the nullifier (this spends the note)
+            await this.privacyPool.withdraw(...this.zkpCalldata);
+
+            // try to double spend by submitting the same withdrawal again
+            await expect(
+                this.privacyPool.withdraw(...this.zkpCalldata)
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "PrivacyPool__NoteAlreadySpent"
+            );
+        });
+
+        it("should revert with `IncrementalMerkleTree__MerkleTreeCapacity`", async () => {
+            /*
+                simulate a full tree by setting the `currentLeafIndex` variable using hardhat
+                (it would take too long to compute 1048576 insertions in a hardhat test). the slot was
+                found using `hardhat-storage-layout` and running the command `hardhat compile && hardhat check`.
+            */
+            await setStorageAt(
+                this.privacyPool.address,
+                1,
+                1048576 // 2 ** 20
+            );
+            await expect(
+                this.privacyPool.deposit(1234, { value: this.denomination })
+            ).to.be.revertedWithCustomError(
+                this.privacyPool,
+                "IncrementalMerkleTree__MerkleTreeCapacity"
+            );
+        });
     });
 });

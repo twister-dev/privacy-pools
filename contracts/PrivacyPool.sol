@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IncrementalMerkleTree.sol";
 import "./verifiers/withdraw_from_subset_simple_verifier.sol";
 
-error PrivacyTokenPool__FeeExceedsAmount();
-error PrivacyTokenPool__InvalidZKProof();
-error PrivacyTokenPool__MsgValueInvalid();
-error PrivacyTokenPool__NoteAlreadySpent();
-error PrivacyTokenPool__UnknownRoot();
-error PrivacyTokenPool__ZeroAddress();
+error PrivacyPool__FeeExceedsDenomination();
+error PrivacyPool__InvalidZKProof();
+error PrivacyPool__MsgValueInvalid();
+error PrivacyPool__NoteAlreadySpent();
+error PrivacyPool__UnknownRoot();
+error PrivacyPool__ZeroAddress();
 
 // No tokens pool. The pool accepts only one denomination of ETH. (E.g. 1 ETH pool, 0.1 ETH pool, 10 ETH pool, etc.)
 contract PrivacyPool is
@@ -49,7 +49,7 @@ contract PrivacyPool is
         Deposit `denomination` amount of ETH.
     */
     function deposit(uint256 commitment) public payable nonReentrant returns (uint256) {
-        if (msg.value != denomination) revert PrivacyTokenPool__MsgValueInvalid();
+        if (msg.value != denomination) revert PrivacyPool__MsgValueInvalid();
         uint256 leafIndex = insert(commitment);
         emit Deposit(
             commitment,
@@ -72,10 +72,10 @@ contract PrivacyPool is
         address relayer,
         uint256 fee
     ) public nonReentrant returns (bool) {
-        if (nullifiers[nullifier]) revert PrivacyTokenPool__NoteAlreadySpent();
-        if (!isKnownRoot(root)) revert PrivacyTokenPool__UnknownRoot();
-        if (fee > denomination) revert PrivacyTokenPool__FeeExceedsAmount();
-        if (recipient == address(0) || relayer == address(0)) revert PrivacyTokenPool__ZeroAddress();
+        if (nullifiers[nullifier]) revert PrivacyPool__NoteAlreadySpent();
+        if (!isKnownRoot(root)) revert PrivacyPool__UnknownRoot();
+        if (fee > denomination) revert PrivacyPool__FeeExceedsDenomination();
+        if (recipient == address(0) || relayer == address(0)) revert PrivacyPool__ZeroAddress();
         uint256 message = abi
             .encodePacked(recipient, relayer, fee)
             .snarkHash();
@@ -87,7 +87,7 @@ contract PrivacyPool is
                 nullifier,
                 message
             )
-        ) revert PrivacyTokenPool__InvalidZKProof();
+        ) revert PrivacyPool__InvalidZKProof();
 
         nullifiers[nullifier] = true;
         emit Withdrawal(recipient, relayer, subsetRoot, nullifier, fee);
