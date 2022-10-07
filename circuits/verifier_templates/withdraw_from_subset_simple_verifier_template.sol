@@ -3,33 +3,31 @@ pragma solidity 0.8.16;
 
 import "./ProofLib.sol";
 
-contract WithdrawFromSubsetVerifier {
+contract WithdrawFromSubsetSimpleVerifier {
     using ProofLib for ProofLib.G1Point;
     using ProofLib for ProofLib.G2Point;
 
-    function withdrawFromSubsetVerifyingKey()
+    function withdrawFromSubsetSimpleVerifyingKey()
         internal
         pure
         returns (ProofLib.VerifyingKey memory vk)
     {
-// VERIFYING KEY
+// VERIFYING_KEY
     }
 
-    function _verifyWithdrawFromSubsetProof(
+    function _verifyWithdrawFromSubsetSimpleProof(
         uint256[8] calldata flatProof,
         uint256 root,
         uint256 subsetRoot,
         uint256 nullifier,
-        uint256 assetMetadata,
-        uint256 withdrawMetadata
+        uint256 message
     ) internal view returns (bool) {
         if (
             root >= ProofLib.SNARK_SCALAR_FIELD ||
             subsetRoot >= ProofLib.SNARK_SCALAR_FIELD ||
             nullifier >= ProofLib.SNARK_SCALAR_FIELD ||
-            assetMetadata >= ProofLib.SNARK_SCALAR_FIELD ||
-            withdrawMetadata >= ProofLib.SNARK_SCALAR_FIELD
-        ) revert ProofLib.GteSnarkScalarField();
+            message >= ProofLib.SNARK_SCALAR_FIELD
+        ) revert ProofLib__GteSnarkScalarField();
 
         ProofLib.Proof memory proof;
         proof.a = ProofLib.G1Point(flatProof[0], flatProof[1]);
@@ -39,13 +37,13 @@ contract WithdrawFromSubsetVerifier {
         );
         proof.c = ProofLib.G1Point(flatProof[6], flatProof[7]);
 
-        ProofLib.VerifyingKey memory vk = withdrawFromSubsetVerifyingKey();
+        ProofLib.VerifyingKey memory vk = withdrawFromSubsetSimpleVerifyingKey();
+        // solhint-disable-next-line var-name-mixedcase
         ProofLib.G1Point memory vk_x = ProofLib.G1Point(0, 0);
         vk_x = vk_x.addition(vk.IC[1].scalarMul(root));
         vk_x = vk_x.addition(vk.IC[2].scalarMul(subsetRoot));
         vk_x = vk_x.addition(vk.IC[3].scalarMul(nullifier));
-        vk_x = vk_x.addition(vk.IC[4].scalarMul(assetMetadata));
-        vk_x = vk_x.addition(vk.IC[5].scalarMul(withdrawMetadata));
+        vk_x = vk_x.addition(vk.IC[4].scalarMul(message));
         vk_x = vk_x.addition(vk.IC[0]);
         return
             proof.a.negate().pairingProd4(
