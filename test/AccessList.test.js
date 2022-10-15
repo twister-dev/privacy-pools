@@ -1,11 +1,12 @@
 const { expect } = require("chai");
 const { poseidon } = require("../lib/poseidon");
-const { AccessList } = require("../lib/accessList");
+const { AccessList } = require('../lib/accessList');
 const { MerkleTree } = require("../lib/merkleTree");
 const { ALLOWED, BLOCKED, randomFEs } = require("../lib/utils");
 
 // N * 31 * 8 determines how many members in the set. raise with caution
 const N = 3;
+
 
 describe("AccessList.js", function () {
     before(async () => {
