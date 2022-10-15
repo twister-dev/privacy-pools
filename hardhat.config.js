@@ -1,7 +1,6 @@
 require("@nomicfoundation/hardhat-chai-matchers");
 require("hardhat-gas-reporter");
 require("dotenv").config();
-// require('./scripts/hardhat.tasks.js');
 
 // require('hardhat-storage-layout');
 
@@ -16,8 +15,8 @@ module.exports = {
         },
         testnet: {
             accounts: [TESTNET_PRIVATE_KEY],
-            url: TESTNET_URL,
-        },
+            url: TESTNET_URL
+        }
         // mainnet: {
         //     accounts: [MAINNET_PRIVATE_KEY],
         //     url: MAINNET_URL,

@@ -5,14 +5,9 @@ const {
     setBalance
 } = require("@nomicfoundation/hardhat-network-helpers");
 const { poseidonContract } = require("circomlibjs");
-const {
-    poseidon,
-    MerkleTree,
-    AccessList,
-    generateProof,
-    verifyProof,
-    utils
-} = require("../lib/index");
+const { poseidon, MerkleTree, AccessList, utils } = require("../lib/index");
+const { generateProof } = require("../lib/generateProof");
+const { verifyProof } = require("../lib/verifyProof");
 const {
     deploy,
     deployBytes,
