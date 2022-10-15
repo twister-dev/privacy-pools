@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import "../interface/Poseidon.sol";
 
@@ -7,7 +7,7 @@ contract TestMerkleTree {
     error IndexOutOfRange();
     error MerkleTreeCapacity();
     error UnknownRoot();
-    Poseidon public hasher;
+    IPoseidon public hasher;
     // do not change the LEVELS value. there's a hardcoded loop below.
     uint256 public constant LEVELS = 20;
     // length of roots history
@@ -25,7 +25,7 @@ contract TestMerkleTree {
 
     // solhint-disable-next-line func-visibility
     constructor(address poseidon) {
-        hasher = Poseidon(poseidon);
+        hasher = IPoseidon(poseidon);
         for (uint256 i = 0; i < LEVELS; ) {
             z[i] = zeros(i);
             // filledSubtrees[i] = zeros(i);

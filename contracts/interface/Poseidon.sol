@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
-interface Poseidon {
+interface IPoseidon {
     function poseidon(uint256[2] calldata) external pure returns (uint256);
 }

@@ -13,11 +13,11 @@ module.exports = {
     networks: {
         hardhat: {
             // loggingEnabled: true,
-        }
-        // testnet: {
-        //     accounts: [TESTNET_PRIVATE_KEY],
-        //     url: TESTNET_URL,
-        // },
+        },
+        testnet: {
+            accounts: [TESTNET_PRIVATE_KEY],
+            url: TESTNET_URL,
+        },
         // mainnet: {
         //     accounts: [MAINNET_PRIVATE_KEY],
         //     url: MAINNET_URL,
@@ -32,7 +32,7 @@ module.exports = {
     solidity: {
         compilers: [
             {
-                version: "0.8.16",
+                version: "0.8.17",
                 settings: {
                     optimizer: {
                         enabled: true,
