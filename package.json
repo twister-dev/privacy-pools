@@ -27,7 +27,6 @@
         "circomlib": "^2.0.5",
         "circomlibjs": "^0.1.7",
         "ethers": "^5.7.1",
-        "ffjavascript": "^0.2.56",
         "fixed-merkle-tree": "^0.7.3"
     },
     "devDependencies": {
