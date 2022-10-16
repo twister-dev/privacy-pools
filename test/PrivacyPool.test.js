@@ -16,7 +16,7 @@ const {
     snapshot
 } = require("../scripts/hardhat.utils");
 
-const VERIFIER_JSON = require("../circuits/out/withdraw_from_subset_simple_verifier.json");
+const VERIFIER_JSON = require("../circuits/out/withdraw_from_subset_verifier.json");
 const WASM_FNAME =
     "./circuits/out/withdraw_from_subset_simple_js/withdraw_from_subset_simple.wasm";
 const ZKEY_FNAME = "./circuits/out/withdraw_from_subset_simple_final.zkey";

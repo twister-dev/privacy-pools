@@ -8,3 +8,6 @@ backlog
 *.error
 *.log
 venv
+.DS_Store
+.lock
+*lock*
