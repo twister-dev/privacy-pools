@@ -9,3 +9,6 @@ backlog
 *.log
 .DS_Store
 venv
+.DS_Store
+.lock
+*lock*

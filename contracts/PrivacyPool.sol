@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IncrementalMerkleTree.sol";
-import "./verifiers/withdraw_from_subset_simple_verifier.sol";
+import "./verifiers/withdraw_from_subset_verifier.sol";
 
 error PrivacyPool__FeeExceedsDenomination();
 error PrivacyPool__InvalidZKProof();
@@ -16,7 +16,7 @@ error PrivacyPool__ZeroAddress();
 contract PrivacyPool is
     ReentrancyGuard,
     IncrementalMerkleTree,
-    WithdrawFromSubsetSimpleVerifier
+    WithdrawFromSubsetVerifier
 {
     using ProofLib for bytes;
 
@@ -80,11 +80,12 @@ contract PrivacyPool is
             .encodePacked(recipient, relayer, fee)
             .snarkHash();
         if (
-            !_verifyWithdrawFromSubsetSimpleProof(
+            !_verifyWithdrawFromSubsetProof(
                 flatProof,
                 root,
                 subsetRoot,
                 nullifier,
+                message,
                 message
             )
         ) revert PrivacyPool__InvalidZKProof();
