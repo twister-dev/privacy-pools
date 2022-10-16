@@ -5,7 +5,7 @@
     "avoid-throw": "error",
     "avoid-sha3": "warn",
     "avoid-suicide": "error",
-    "compiler-version": ["error", "0.8.16"]
+    "compiler-version": ["error", "0.8.17"]
   },
   "plugins": ["prettier"]
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 // This test file is used to compare between js and solidity and estimate the gas
 // of this function.

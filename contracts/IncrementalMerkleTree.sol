@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import "./interface/Poseidon.sol";
 
@@ -8,7 +8,7 @@ error IncrementalMerkleTree__MerkleTreeCapacity();
 // Append only merkle tree
 contract IncrementalMerkleTree {
     // poseidon hash function with 2 inputs
-    Poseidon public immutable hasher;
+    IPoseidon public immutable hasher;
     // do not change the LEVELS value. there's a hardcoded loop below.
     uint256 public constant LEVELS = 20;
     // length of roots history
@@ -21,7 +21,7 @@ contract IncrementalMerkleTree {
     mapping(uint256 => uint256) public roots;
 
     constructor(address poseidon) {
-        hasher = Poseidon(poseidon);
+        hasher = IPoseidon(poseidon);
         // precomputed from zeroValue = keccak("empty") % p
         filledSubtrees[0] = 543544072303548185257517071258879077999438229338741863745347926248040160894;
         filledSubtrees[1] = 5263148031615500517773789998166832002359358478815380373385457941076984476107;
