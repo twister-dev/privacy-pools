@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { network, ethers } = require("hardhat");
-const { developmentChains } = require("../helper-hardhat-config"); //TODO: remove this shit
+const { developmentChains } = require("../helper-hardhat-config"); 
 const { deploy } = require("../scripts/hardhat.utils");
 const utils = require("../lib/utils");
 
