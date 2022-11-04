@@ -1,11 +1,31 @@
+const fs = require("fs");
+const { poseidonContract } = require("circomlibjs");
 const { ethers } = require("hardhat");
-const { deploy } = require("./hardhat.utils.js");
+const { deploy, deployBytes } = require("./hardhat.utils.js");
+const poseidonContracts = require("../poseidonContracts.json");
 
-const poseidonContract = "0x2CBDd0a80645f5701EB1FbD2AA9076103babd7cC";
+const denomination = ethers.utils.parseEther("0.001");
 
 async function main() {
-    const denomination = ethers.utils.parseEther("0.001");
-    await deploy("PrivacyPool", [poseidonContract, denomination], true);
+    hre.ethers.provider.getNetwork().then(async ({ chainId }) => {
+        const poseidonAddress = poseidonContracts[chainId];
+        if (!poseidonAddress) {
+            const abi = poseidonContract.generateABI(2);
+            const bytecode = poseidonContract.createCode(2);
+            const poseidon = await deployBytes("Poseidon", abi, bytecode, true);
+            poseidonContracts[chainId] = poseidon.address;
+            fs.writeFileSync(
+                "./poseidonContracts.json",
+                JSON.stringify(poseidonContracts, null, 4)
+            );
+        }
+
+        await deploy(
+            "PrivacyPool",
+            [poseidonContracts[chainId], denomination],
+            true
+        );
+    });
 }
 
 main().catch(console.error);

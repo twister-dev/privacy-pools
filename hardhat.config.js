@@ -4,7 +4,15 @@ require("dotenv").config();
 
 // require('hardhat-storage-layout');
 
-const { MAINNET_PRIVATE_KEY, MAINNET_URL, TESTNET_PRIVATE_KEY, TESTNET_URL } =
+const {
+    OP_GOERLI_RPC,
+    GOERLI_KEY,
+    GOERLI_RPC,
+    OP_GOERLI_KEY,
+    OP_KEY,
+    ETH_KEY,
+    ETH_RPC
+} =
     process.env;
 
 module.exports = {
@@ -13,14 +21,22 @@ module.exports = {
         hardhat: {
             // loggingEnabled: true,
         },
-        testnet: {
-            accounts: [TESTNET_PRIVATE_KEY],
-            url: TESTNET_URL
-        }
-        // mainnet: {
-        //     accounts: [MAINNET_PRIVATE_KEY],
-        //     url: MAINNET_URL,
-        // }
+        // op: {
+        //     accounts: [OP_KEY],
+        //     url: OP_RPC
+        // },
+        // op_goerli: {
+        //     accounts: [OP_GOERLI_KEY],
+        //     url: OP_GOERLI_RPC
+        // },
+        // eth: {
+        //     accounts: [ETH_KEY],
+        //     url: ETH_RPC
+        // },
+        // goerli: {
+        //     accounts: [GOERLI_KEY],
+        //     url: GOERLI_RPC
+        // },
     },
     paths: {
         sources: "./contracts",
