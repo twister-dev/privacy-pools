@@ -38,6 +38,10 @@ function shuffleArray(array) {
     }
 }
 
+function padLeft(value) {
+    return ethers.utils.hexZeroPad(value, 32);
+}
+
 // using explicit `function` at this level, instead of an arrow function, gives
 // us a persistent state `this` within nested arrow functions in the test
 describe("PrivacyPool.sol", function () {
@@ -123,7 +127,7 @@ describe("PrivacyPool.sol", function () {
             // check empty root before any deposits
             expect(
                 (await this.privacyPool.getLatestRoot()).toString()
-            ).to.be.equal(this.depositTree.root.toString());
+            ).to.be.equal(padLeft(this.depositTree.root));
 
             // we'll check that the pool ETH balance increases after each deposit
             var balanceOfPool = ethers.BigNumber.from(0);
@@ -141,12 +145,14 @@ describe("PrivacyPool.sol", function () {
 
                 const tx = this.privacyPool
                     .connect(signer)
-                    .deposit(this.commitments[i], { value: this.denomination });
+                    .deposit(padLeft(this.commitments[i]), {
+                        value: this.denomination
+                    });
                 // deposit using commitment, check event log data for commitment
                 await expect(tx)
                     .to.emit(this.privacyPool, "Deposit")
                     .withArgs(
-                        this.commitments[i],
+                        padLeft(this.commitments[i]),
                         this.denomination,
                         i,
                         timestamp
@@ -155,7 +161,7 @@ describe("PrivacyPool.sol", function () {
                 await this.depositTree.insert(this.commitments[i]);
                 expect(
                     (await this.privacyPool.getLatestRoot()).toString()
-                ).to.be.equal(this.depositTree.root.toString());
+                ).to.be.equal(padLeft(this.depositTree.root));
 
                 // check pool has received the ETH
                 balanceOfPool = balanceOfPool.add(this.denomination);
@@ -229,9 +235,9 @@ describe("PrivacyPool.sol", function () {
                     if (typeof this.zkpCalldata === "undefined")
                         this.zkpCalldata = [
                             flatProof,
-                            root,
-                            subsetRoot,
-                            nullifier,
+                            padLeft(root),
+                            padLeft(subsetRoot),
+                            padLeft(nullifier),
                             recipient,
                             relayer,
                             fee
@@ -242,9 +248,9 @@ describe("PrivacyPool.sol", function () {
                         .connect(this.relayer)
                         .withdraw(
                             flatProof,
-                            root,
-                            subsetRoot,
-                            nullifier,
+                            padLeft(root),
+                            padLeft(subsetRoot),
+                            padLeft(nullifier),
                             recipient,
                             relayer,
                             fee
@@ -255,8 +261,8 @@ describe("PrivacyPool.sol", function () {
                         .withArgs(
                             recipient,
                             relayer,
-                            subsetRoot,
-                            nullifier,
+                            padLeft(subsetRoot),
+                            padLeft(nullifier),
                             fee
                         );
 
@@ -352,9 +358,9 @@ describe("PrivacyPool.sol", function () {
                     if (typeof this.zkpCalldata === "undefined")
                         this.zkpCalldata = [
                             flatProof,
-                            root,
-                            subsetRoot,
-                            nullifier,
+                            padLeft(root),
+                            padLeft(subsetRoot),
+                            padLeft(nullifier),
                             recipient,
                             relayer,
                             fee
@@ -365,9 +371,9 @@ describe("PrivacyPool.sol", function () {
                         .connect(this.relayer)
                         .withdraw(
                             flatProof,
-                            root,
-                            subsetRoot,
-                            nullifier,
+                            padLeft(root),
+                            padLeft(subsetRoot),
+                            padLeft(nullifier),
                             recipient,
                             relayer,
                             fee
@@ -378,8 +384,8 @@ describe("PrivacyPool.sol", function () {
                         .withArgs(
                             recipient,
                             relayer,
-                            subsetRoot,
-                            nullifier,
+                            padLeft(subsetRoot),
+                            padLeft(nullifier),
                             fee
                         );
 
@@ -530,9 +536,9 @@ describe("PrivacyPool.sol", function () {
                 await expect(
                     this.privacyPool.withdraw(
                         flatProof,
-                        root,
-                        subsetRoot,
-                        nullifier,
+                        padLeft(root),
+                        padLeft(subsetRoot),
+                        padLeft(nullifier),
                         recipient,
                         relayer,
                         fee
@@ -638,14 +644,14 @@ describe("PrivacyPool.sol", function () {
         it("should revert with `PrivacyPool__MsgValueInvalid()`", async () => {
             // try to deposit without sending any eth
             await expect(
-                this.privacyPool.deposit(123456789)
+                this.privacyPool.deposit(padLeft("0x123456789"))
             ).to.be.revertedWithCustomError(
                 this.privacyPool,
                 "PrivacyPool__MsgValueInvalid"
             );
 
             // try to deposit by sending less than denomination eth
-            await expect(this.privacyPool.deposit(123456789), {
+            await expect(this.privacyPool.deposit(padLeft("0x123456789")), {
                 value: ethers.utils.parseEther("0.1")
             }).to.be.revertedWithCustomError(
                 this.privacyPool,
@@ -713,9 +719,9 @@ describe("PrivacyPool.sol", function () {
             await expect(
                 this.privacyPool.withdraw(
                     flatProof,
-                    root,
-                    subsetRoot,
-                    nullifier,
+                    padLeft(root),
+                    padLeft(subsetRoot),
+                    padLeft(nullifier),
                     recipient,
                     relayer,
                     fee
@@ -795,7 +801,9 @@ describe("PrivacyPool.sol", function () {
                 1048576 // 2 ** 20
             );
             await expect(
-                this.privacyPool.deposit(1234, { value: this.denomination })
+                this.privacyPool.deposit(padLeft("0x1234"), {
+                    value: this.denomination
+                })
             ).to.be.revertedWithCustomError(
                 this.privacyPool,
                 "IncrementalMerkleTree__MerkleTreeCapacity"

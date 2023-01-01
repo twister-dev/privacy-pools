@@ -4,7 +4,7 @@ const { ethers } = require("hardhat");
 const { deploy, deployBytes } = require("./hardhat.utils.js");
 const poseidonContracts = require("../poseidonContracts.json");
 
-const denomination = ethers.utils.parseEther("0.001");
+const denomination = ethers.utils.parseEther("0.01");
 
 async function main() {
     hre.ethers.provider.getNetwork().then(async ({ chainId }) => {

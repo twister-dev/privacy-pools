@@ -11,7 +11,8 @@ const {
     OP_GOERLI_KEY,
     OP_KEY,
     ETH_KEY,
-    ETH_RPC
+    ETH_RPC,
+    SEPOLIA_RPC
 } =
     process.env;
 
@@ -20,6 +21,10 @@ module.exports = {
     networks: {
         hardhat: {
             // loggingEnabled: true,
+        },
+        sepolia: {
+            accounts: [GOERLI_KEY],
+            url: SEPOLIA_RPC
         },
         // op: {
         //     accounts: [OP_KEY],
@@ -33,10 +38,10 @@ module.exports = {
         //     accounts: [ETH_KEY],
         //     url: ETH_RPC
         // },
-        // goerli: {
-        //     accounts: [GOERLI_KEY],
-        //     url: GOERLI_RPC
-        // },
+        goerli: {
+            accounts: [GOERLI_KEY],
+            url: GOERLI_RPC
+        },
     },
     paths: {
         sources: "./contracts",

@@ -23,8 +23,8 @@ contract PrivacyTokenPool is
 
     // emit the raw commitment, stamped leaf, plus the data to reconstruct the stamped commitment
     event Deposit(
-        uint256 indexed commitment,
-        uint256 indexed leaf,
+        bytes32 indexed commitment,
+        bytes32 indexed leaf,
         address indexed token,
         uint256 amount,
         uint256 leafIndex,
@@ -34,13 +34,13 @@ contract PrivacyTokenPool is
     event Withdrawal(
         address recipient,
         address indexed relayer,
-        uint256 indexed subsetRoot,
-        uint256 nullifier,
+        bytes32 indexed subsetRoot,
+        bytes32 nullifier,
         uint256 fee
     );
 
     // double spend records
-    mapping(uint256 => bool) public nullifiers;
+    mapping(bytes32 => bool) public nullifiers;
 
     constructor(address poseidon) IncrementalMerkleTree(poseidon) {}
 
@@ -48,13 +48,13 @@ contract PrivacyTokenPool is
         Deposit any asset and any amount.
     */
     function deposit(
-        uint256 commitment,
+        bytes32 commitment,
         address token,
         uint256 amount
     ) public payable nonReentrant returns (uint256) {
         if (token == address(0)) revert PrivacyTokenPool__ZeroAddress();
-        uint256 assetMetadata = abi.encodePacked(token, amount).snarkHash();
-        uint256 leaf = hasher.poseidon([commitment, assetMetadata]);
+        bytes32 assetMetadata = bytes32(abi.encodePacked(token, amount).snarkHash());
+        bytes32 leaf = hasher.poseidon([commitment, assetMetadata]);
         uint256 leafIndex = insert(leaf);
 
         emit Deposit(
@@ -79,9 +79,9 @@ contract PrivacyTokenPool is
     */
     function withdrawFromSubset(
         uint256[8] calldata flatProof,
-        uint256 root,
-        uint256 subsetRoot,
-        uint256 nullifier,
+        bytes32 root,
+        bytes32 subsetRoot,
+        bytes32 nullifier,
         address token,
         uint256 amount,
         address recipient,
@@ -100,9 +100,9 @@ contract PrivacyTokenPool is
         if (
             !_verifyWithdrawFromSubsetProof(
                 flatProof,
-                root,
-                subsetRoot,
-                nullifier,
+                uint256(root),
+                uint256(subsetRoot),
+                uint256(nullifier),
                 assetMetadata,
                 withdrawMetadata
             )

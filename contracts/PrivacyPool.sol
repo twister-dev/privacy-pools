@@ -22,7 +22,7 @@ contract PrivacyPool is
 
     // the same commitment can be deposited multiple times, can search for which leafIndexes it has in the tree
     event Deposit(
-        uint256 indexed commitment,
+        bytes32 indexed commitment,
         uint256 denomination,
         uint256 leafIndex,
         uint256 timestamp
@@ -31,15 +31,15 @@ contract PrivacyPool is
     event Withdrawal(
         address recipient,
         address indexed relayer,
-        uint256 indexed subsetRoot,
-        uint256 indexed nullifier,
+        bytes32 indexed subsetRoot,
+        bytes32 indexed nullifier,
         uint256 fee
     );
 
     // denomination of deposits and withdrawals for this pool
     uint256 public immutable denomination;
     // double spend records
-    mapping(uint256 => bool) public nullifiers;
+    mapping(bytes32 => bool) public nullifiers;
 
     constructor(address poseidon, uint256 _denomination) IncrementalMerkleTree(poseidon) {
         denomination = _denomination;
@@ -48,7 +48,7 @@ contract PrivacyPool is
     /*
         Deposit `denomination` amount of ETH.
     */
-    function deposit(uint256 commitment) public payable nonReentrant returns (uint256) {
+    function deposit(bytes32 commitment) public payable nonReentrant returns (uint256) {
         if (msg.value != denomination) revert PrivacyPool__MsgValueInvalid();
         uint256 leafIndex = insert(commitment);
         emit Deposit(
@@ -65,9 +65,9 @@ contract PrivacyPool is
     */
     function withdraw(
         uint256[8] calldata flatProof,
-        uint256 root,
-        uint256 subsetRoot,
-        uint256 nullifier,
+        bytes32 root,
+        bytes32 subsetRoot,
+        bytes32 nullifier,
         address recipient,
         address relayer,
         uint256 fee
@@ -82,9 +82,9 @@ contract PrivacyPool is
         if (
             !_verifyWithdrawFromSubsetSimpleProof(
                 flatProof,
-                root,
-                subsetRoot,
-                nullifier,
+                uint256(root),
+                uint256(subsetRoot),
+                uint256(nullifier),
                 message
             )
         ) revert PrivacyPool__InvalidZKProof();
