@@ -13,8 +13,7 @@ const {
     ETH_KEY,
     ETH_RPC,
     SEPOLIA_RPC
-} =
-    process.env;
+} = process.env;
 
 module.exports = {
     defaultNetwork: "hardhat",
@@ -41,7 +40,7 @@ module.exports = {
         goerli: {
             accounts: [GOERLI_KEY],
             url: GOERLI_RPC
-        },
+        }
     },
     paths: {
         sources: "./contracts",
